@@ -1,25 +1,18 @@
 ---
 layout: page
-title: About the Theme
-tags: [about, Jekyll, theme, responsive]
-modified: 2014-08-08T20:53:07.573882-04:00
+title: About Me
+tags: [about]
+modified: 2015-08-08T20:53:07.573882-04:00
 comments: true
 image:
-  feature: sample-image-2.jpg
-  credit: WeGraphics
-  creditlink: http://wegraphics.net/downloads/free-ultimate-blurred-background-pack/
+  feature: sample-image-2--.jpg
+  credit: 
+  creditlink:
 ---
 
-Minimal Mistakes is responsive Jekyll theme with large featured images and solid typography. As the name implies the styling is fairly minimal to make it easier for you to build on top of.
+My name is David Marx, and I’m addicted to data science. This is my blog.  
 
-## Minimal Mistakes is all about:
+I’m a Data Scientist at Elder Research, a consulting firm in the DC area. I started this blog when I was a Data Analyst at a music royalty company and was just getting my feet wet with data science in my spare time. I found myself spending more and more of my free time and energy teaching myself data science/machine learning/statistics/programming topics, attending lectures in the local meetup community, and engaging in hobby projects. Eventually, I gave in and got a Math/Stats MS from Georgetown (resulting in a significant reduction in my activity on this blog).  
 
-* Responsive templates. Looking good on mobile, tablet, and desktop.
-* Gracefully degrading in older browsers. Compatible with Internet Explorer 8+ and all modern browsers.
-* Minimal embellishments -- content first.
-* Optional large feature images for posts and pages.
-* Simple and clear permalink structure.
-* [Custom 404 page](http://mmistakes.github.io/minimal-mistakes/404.html) to get you started.
-* Support for Disqus Comments
+The name “Unsupervised Learning” is a nod to my early efforts to teach myself analytics prior to attaining my masters degree. This blog is not specifically focused on unsupervised algorithms.  
 
-<a markdown="0" href="{{ site.url }}/theme-setup" class="btn">Install Minimal Mistakes Theme</a>
