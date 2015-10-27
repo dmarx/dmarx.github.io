@@ -2,7 +2,7 @@
 layout: post
 title: What’s Really Going On In Principal Component Analysis (PCA)?
 excerpt: "Visual explanation of PCA"
-tags: [python, anaconda]
+tags: [principal component analysis, pca, dimensionality reduction, linear algebra, r language]
 modified:
 comments: true
 ---
