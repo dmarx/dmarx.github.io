@@ -3,7 +3,7 @@ layout: post
 title: Topological Anomaly Detection (TAD)
 excerpt: "A python implementation I authored for an anomaly detection algorithm."
 tags: [text processing, natural language processing, nlp, python]
-modified: 2014-08-04
+modified:
 comments: true
 ---
 
