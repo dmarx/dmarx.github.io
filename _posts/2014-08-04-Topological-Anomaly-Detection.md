@@ -8,7 +8,7 @@ comments: true
 ---
 
 <figure>
-	<img src="/images/Iris_outlier_graph.png">
+	<img src="/images/iris_outlier_graph.png">
 </figure>
 
 (tl;dr: [https://github.com/dmarx/Topological-Anomaly-Detection](https://github.com/dmarx/Topological-Anomaly-Detection))
@@ -135,7 +135,7 @@ plt.show()
 {% endhighlight %}
 
 <figure>
-	<img src="/images/Iris_pairs_plot.png">
+	<img src="/images/iris_pairs_plot.png">
 </figure>
 
 The pairs plot it a great way to visualize the data, but if we had more than 4 dimensions this wouldn't be a viable option. Instead, let's reduce the dimensionality of the data using PCA just for visualization purposes. While we're at it, let's actually visualize how the observations are connected in the graph components to get a better idea of what the algorithm is doing.
@@ -158,19 +158,19 @@ plt.show()
 {% endhighlight %}
 
 <figure>
-	<img src="/images/Iris_outlier_graph.png">
+	<img src="/images/iris_outlier_graph.png">
 </figure>
 
 If we reduce the graph resolution, we get more observations classed as outliers. Here's what it looks like with rq=0.05 (the default--above--is 0.10):
 
 <figure>
-	<img src="/images/Iris_outlier_graph_rq05.png">
+	<img src="/images/iris_outlier_graph_rq05.png">
 </figure>
 
 And here's rq=0.03:
 
 <figure>
-	<img src="/images/Iris_outlier_graph_rq03.png">
+	<img src="/images/iris_outlier_graph_rq03.png">
 </figure>
 
 In case these images don't give you the intuition, reducing the graph resolution results in breaking up the graph into more and more components. Changing the 'p' parameter has a much less granular effect (as long as most of the observations are in a small number of components): changing 'p' will have basically no effect for small increments, but above a threshold we end up classifying large swathes of the graph as outliers.
