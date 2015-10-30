@@ -2,12 +2,14 @@
 
 title:            Unsupervised Learning
 locale:           en_US
-url: http://dmarx.github.io
+url: #http://dmarx.github.io
 
 
 # Jekyll configuration
-
-permalink:   /:categories/:title/
+paginate: 10
+paginate_path: "page:num"
+excerpt_separator: <!--more-->
+#permalink:   /:categories/:title/
 markdown:    kramdown
 highlighter: pygments
 sass:

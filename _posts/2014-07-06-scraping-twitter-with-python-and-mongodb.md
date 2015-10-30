@@ -1,7 +1,7 @@
 ---
 layout: post
 title: Scraping your twitter home timeline with python and mongodb
-excerpt: "Using the twitter API and NoSQL to construct a dataset of your friends tweets."
+#excerpt: "Using the twitter API and NoSQL to construct a dataset of your friends tweets."
 tags: [text processing, natural language processing, nlp, python, mongo, mongodb, nosql, twython, twitter]
 modified:
 comments: true
@@ -12,6 +12,8 @@ comments: true
 About a year and a half ago I was hanging out with two colleagues, John and Jane. John and I were discussing various new happenings we'd heard about recently. Jane was very impressed with how current we were and wondered how we did it. I described how I subscribe to several blogs and that suits me fine, but John insisted that we both needed to try Twitter.
 
 I buckled down and finally created a twitter account. I didn't really know who to follow, so picked a prominent local data scientist and let him "vet" users for me: I skimmed his "following" list and decided to also follow anyone who's description made them sound reasonably interesting (from a data science stand point). The problem with this method is that I ended up following a bunch of his random friends who don't actually talk about data science. Right now, there's just too much happening on me twitter feed to keep up. If I don't check it every now and then, I'll quickly amass hundreds of backlogged tweets, so I have strong motivation to "trim the fat" of my following list.
+
+<!--more-->
 
 ###Setup
 

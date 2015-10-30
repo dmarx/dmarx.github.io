@@ -43,7 +43,9 @@
       {% endif %}
     </div><!--/ .headline-wrap -->
     <div class="article-wrap">
-     <p class="byline">This article was first published on <a href="{{ site.url }}{{ page.url }}">Unsupervised Learning</a>, written by <a href="{{ site.url }}/about/">{{ author.name }}</a>.</p>
+     <p class="byline">
+        <i>This article was first published on</i> <a href="{{ site.url }}{{ page.url }}"><i>Unsupervised Learning</i></a>, <i>written by</i> <a href="{{ site.url }}/about/"><i>{{ author.name }}</i></a>.
+     </p>
       {{ content }}
       <hr />
       <footer role="contentinfo">
