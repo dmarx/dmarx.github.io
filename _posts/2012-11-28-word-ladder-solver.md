@@ -210,36 +210,42 @@ def build_index(words, n_letters=2, left=True, verbose=True):
 
 This significantly speeds up our code, but if you watch the code run, it seems to speed up and slow down in bursts. This isn't because your RAM is wonky. This is because the elements in our indexes aren't evenly distributed. Specifically, two-letter prefixes are pretty evenly distributed, but two letter-suffixes are not.
 
- 
+<figure class="half">
+    <a href="/images/word_ladder/ixl2_hist.png"><img src="/images/word_ladder/ixl2_hist.png"></a>
+    <a href="/images/word_ladder/ixr2_hist.png"><img src="/images/word_ladder/ixr2_hist.png"></a>
+    <figcaption>Histograms of the distributions of two-letter prefixes and suffixes, respectively.</figcaption>
+</figure>
+<br>
 
- 
+To remedy this we're going to use a three-letter index. An unfortunate result of my index implementation is that words that are smaller than the index size (here two letter words) don't get considered when looking up words of size greater than or equal to the index. So although "AH" and "AAH" are similar, they're contained in separate indexes with no overlap, so when I search for words similar to "AA" I'll get "AT" but not "AAH", and similarly when I look for words similar to "AAH" I'll get "AAHS" but not "AA" or "AH." This isn't pefect, but I stronglly suspect the effect on the final product is negligible. I could just use a separate index size for the two prefixes, but this was simpler to code and it only just occured to me I could use a two-letter index on the left and a three-letter index on the right. So sue me. I regret nothing. The three letter index is faster anyway.
 
- To remedy this we're going to use a three-letter index. An unfortunate result of my index implementation is that words that are smaller than the index size (here two letter words) don't get considered when looking up words of size greater than or equal to the index. So although "AH" and "AAH" are similar, they're contained in separate indexes with no overlap, so when I search for words similar to "AA" I'll get "AT" but not "AAH", and similarly when I look for words similar to "AAH" I'll get "AAHS" but not "AA" or "AH." This isn't pefect, but I stronglly suspect the effect on the final product is negligible. I could just use a separate index size for the two prefixes, but this was simpler to code and it only just occured to me I could use a two-letter index on the left and a three-letter index on the right. So sue me. I regret nothing. The three letter index is faster anyway.
-
-{% raw %}
-## Most Common suffixes: two letters
-# ES     6810
-# ED     6792
-# ER     5296
-# NG     4222
-# RS     3480
-# TS     2332
-## Most Common suffixes:three letters
-# ING    4062
-# ERS    2743
-# IER    1142
-# EST    1035
-# TED    1014
-# IES     985
-#   NB: The top two three-letter suffixes combined comprise about
-#   the same amount of the wordlist as the top two most popular
-#   two-letter suffixes separately, and the rest of the suffixes
-#   are pretty uniformly distributed.
-{% endraw %}
+    ## Most Common suffixes: two letters
+    # ES     6810
+    # ED     6792
+    # ER     5296
+    # NG     4222
+    # RS     3480
+    # TS     2332
+    ## Most Common suffixes:three letters
+    # ING    4062
+    # ERS    2743
+    # IER    1142
+    # EST    1035
+    # TED    1014
+    # IES     985
+    #   NB: The top two three-letter suffixes combined comprise about
+    #   the same amount of the wordlist as the top two most popular
+    #   two-letter suffixes separately, and the rest of the suffixes
+    #   are pretty uniformly distributed.
 
 If you look at the X axis of the histograms below for the three letter indices you'll notice that two letter words are segregated into their own buckets. If we made similar histograms for indices of four or five letters, these buckets would manifest as an unusual density on the far left of the graph.
 
- 
+<figure class="half">
+    <a href="/images/word_ladder/ixl2_hist.png"><img src="/images/word_ladder/ixl3_hist.png"></a>
+    <a href="/images/word_ladder/ixr2_hist.png"><img src="/images/word_ladder/ixr3_hist.png"></a>
+    <figcaption>Histograms of the distributions of three-letter prefixes and suffixes, respectively.</figcaption>
+</figure>
+<br>
 
  
 
