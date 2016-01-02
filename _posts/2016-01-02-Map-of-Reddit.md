@@ -16,8 +16,11 @@ https://dmarx.github.io/SubredditMentionsGraph/network/
 <iframe 
     src="https://dmarx.github.io/SubredditMentionsGraph/network/" 
     marginwidth="0" 
-    marginheight="0" 
-    scrolling="no">
+    marginheight="0"
+    width="600" 
+    height="400"    
+    scrolling="no"
+    >
 </iframe>
 
 
