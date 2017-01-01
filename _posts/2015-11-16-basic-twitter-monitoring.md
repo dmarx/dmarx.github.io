@@ -1,6 +1,6 @@
 ---
 layout: post
-title: Using python to monitor twitter for trending content
+title: Using python to monitor twitter for trending content - Part 1 - Building a cache
 excerpt: "Sipping from the firehose"
 tags: [python, twython, twitter, OOP]
 modified:
@@ -10,11 +10,23 @@ comments: true
 There are many reasons why you might want to know what is trending on twitter. 
 Maybe you're a news company and you want to catch breaking news as it's 
 happening, or you're a stock broker who wants to be able to trade on information
-before thier competitors. There are several companies for whom this kind of 
+before their competitors. There are several companies for whom this kind of 
 trend detection is essentially their entire business model. I'm not going to get
 very deep in the weeds on the topic here, but we'll get our feet wet.
 
-### The twitter API
+### Problem statement
+
+I've said that I want to identify "trends" on twitter, but I haven't clarified
+what this means. In many modeling contexts, a "trend" is a global, constant 
+pattern where the more data we have the more accurately we can describe it. In 
+this case, I mean almost the exact opposite. A "trend" in the context of social
+media -- or perhaps more appropriately "trending content" or "trending topics" 
+-- describes an information object that is experience an unusual and transient
+spike in popularity. 
+
+To measure these transient spikes, we will put more importance
+
+### Intro to the twitter API
 
 I discussed the twitter API a little bit in my earlier post on scraping the
 home timeline, but we're going to focus on the 
