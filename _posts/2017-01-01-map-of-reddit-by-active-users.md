@@ -55,9 +55,7 @@ That's the high level overview. Concretely, here's how this graph was constructe
 
 * Additionally, drop subreddits that, after applying the above procedures, have degree zero (i.e. aren't connected to any other subreddits). This has the effect that subreddits that were not recently active or where a relationship could not be inferred are excluded. Notable examples of ignored but active subreddits include /r/MapleStory, /r/MSLGame and /r/Indonesia.
 
-This was certainly not the first attempt to map reddit, nor will it be the last. But for a variety of reasons (which I'll delve into in a future post), I think it's the most useful map available. If you're a redditor, I hope it helps you find something new that interests you! 
-
-This graph is mainly powerful to help users find people with similar interests: as a next step, I'd like to infer the reddit cross-posting network as well to identify subreddits that are related by content and merge that network into this one. This would capture connections to subreddits whose users may not be especially engaged in the comments, but should still otherwise be considered "active" due to the volume/velocity of content.
+* Identify communities algorithmically (via Gephi's modularity method with reduced resolution chosen qualitatively)
 
 ## Some Results
 
@@ -147,3 +145,9 @@ After deriving a sequential palette as described above, I reorganized my palette
 <figure>
 	<img src="/images/reddit_graphs/strided_wheel.png" alt="'Stride' shuffled HSL palette, with a stride of 5">
 </figure>
+
+## Conclusion
+
+This graph is mainly powerful to help users find people with similar interests: as a next step, I'd like to infer the reddit cross-posting network as well to identify subreddits that are related by content and merge that network into this one. This would capture connections to subreddits whose users may not be especially engaged in the comments, but should still otherwise be considered "active" due to the volume/velocity of content.
+
+This was certainly not the first attempt to map reddit, nor will it be the last. But for a variety of reasons (which I'll delve into in a future post), I think it's the most useful map available. If you're a redditor, I hope it helps you find something new that interests you! 
