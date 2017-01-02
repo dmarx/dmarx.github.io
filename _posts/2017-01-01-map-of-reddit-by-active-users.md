@@ -14,6 +14,8 @@ comments: true
     </a>
 </figure>
 
+(Click the image above to visit the interactive visualization discussed below)
+
 ## Background
 
 For about two years now, I've played with different approaches to investigating the community structure of reddit. A year ago, I published a "map" of reddit (that I had actually built nearly a year prior, just hadn't written up). The approach I used was motivated by a particular unusual dataset I'd collected. It worked out really well, but I wanted to build a more "complete" picture of the reddit community. In particular, I wanted to build something that would be generally useful for other people. In my analyses over the years, I have discovered a lot of interesting corners of reddit: some of these are just fascinating that they exist at all (e.g. the surprisingly sprawling, albeit currently inactive, communities that sprung up around the 2015 and 2016 April fools pranks), but others were actually extremely relevant and enjoyable to me personally, and I wouldn't have discovered them were it not for the tools I'd build for my personal analyses. 
@@ -66,20 +68,26 @@ few selected results as static images for people who can't explore the graph the
 Console gaming (Xbox One and PS4) interest community. Two most active subreddits (between September and November 2016) are /r/RocketLeagueExchange /r/DestinyTheGame:
 
 <figure>
+    <a href="/images/reddit_graphs/RocketLeagueExchange_DestinyTheGame.png">
 	<img src="/images/reddit_graphs/RocketLeagueExchange_DestinyTheGame.png" alt="Console Gaming Reddit Community">
+    </a>
 </figure>
 
 Detail of the computer hardware interest community surrounding /r/buildapc, a microcommunity embedded in the larger high-performance computing community characterized by /r/gaming and /r/pcmasterrace:
 
 <figure>
+    <a href="/images/reddit_graphs/gaming_pcmasterrace__detail.png">
 	<img src="/images/reddit_graphs/gaming_pcmasterrace__detail.png" alt="Reddit computer hardware community">
+    </a>
 </figure>
 
 
 American Sports interest community (which is interestingly proximal to European sports community -- not shown -- which is dominated by soccer subreddits). Two most active subreddits (between September and November 2016) are /r/nfl and /r/CFB:
 
 <figure>
+    <a href="/images/reddit_graphs/nfl_CFB.png">
 	<img src="/images/reddit_graphs/nfl_CFB.png" alt="American Sports Reddit Community">
+    </a>
 </figure>
 
 
@@ -87,24 +95,26 @@ American Sports interest community (which is interestingly proximal to European 
 Detail of the main cluster of the amateur porn, aka "gone wild" community:
 
 <figure>
+    <a href="/images/reddit_graphs/sex_GoneWild.png">
 	<img src="/images/reddit_graphs/sex_GoneWild.png" alt="Reddit GoneWild community">
+    </a>
 </figure>
 
 ## Previous work
 
-I want to give a shout out to Randall Hiever (/u/rhiever) who was one of the first people to experiment with mapping reddit, and certainly the first to go about getting his results published academically. My approach is similar to his, both in how edges were inferred and how the data was visualized, but I want to highlight a few key differences:
+I want to give a shout out to Dr. Randal Olson (/u/rhiever) who was one of the first people to experiment with [mapping reddit](http://www.randalolson.com/2014/10/27/the-reddit-world-map/), and certainly the first to go about getting his results [published academically](https://peerj.com/articles/cs-4/). My approach is similar to his, both in how edges were inferred and how the data was visualized, but I want to highlight a few key differences:
 
-* Where Randall looked at all mutual users between all subeddits, I make an effort to constrain attention to users who can be described as "active" in those subreddits, and additionally constrain attention to subreddits that were recently active to avoid directing users to "dead" communities.
+* Where Randal looked at all mutual users between all subeddits, I make an effort to constrain attention to users who can be described as "active" in those subreddits, and additionally constrain attention to subreddits that were recently active to avoid directing users to "dead" communities.
 
-* Where Randall colored nodes in his visualization based on their degree, I colored nodes based on their community membership and in such a way as to maximize the perceptual difference between any two random communities. Details below.
+* Where Randal colored nodes in his visualization based on their degree, I colored nodes based on their community membership and in such a way as to maximize the perceptual difference between any two random communities. Details below.
 
-* Additionally, I provided a mechanism to allow users to constrain their attention to the algorithmically inferred communities in the reddit graph. To help users navigate these communities, I labeled them according to "prototype" subreddits. I designated the two most active subreddits in each community as the labeling prototypes. This gave very good results, but in retrospect I might have gotten better results for a handful of communities if I had instead designated prototypes based on subscribership (e.g. the "RocketLeagueExchange/DestinyTheGame" community would instead have been labeled "ps4/DestinyTheGame"). 
+* Additionally, I provided a mechanism to allow users to constrain their attention to the algorithmically inferred communities in the reddit graph. To help users navigate these communities, I labelled them according to "prototype" subreddits. I designated the two most active subreddits in each community as the labelling prototypes. This gave very good results, but in retrospect I might have gotten better results for a handful of communities if I had instead designated prototypes based on subscribership (e.g. the "RocketLeagueExchange/DestinyTheGame" community would instead have been labelled "ps4/DestinyTheGame"). 
 
-* Where Randall used a statistical approach determine which edges to remove, I relied on my subject matter expertise to construct appropriate thresholds. This seems like a subtle choice but I think it is an extremely important distinguishing feature beause I think Randall's approach was actually deceptively aggressive. In fact, let me get into the nitty gritty behind this decision.
+* Where Randal used a statistical approach determine which edges to remove, I relied on my subject matter expertise to construct appropriate thresholds. This seems like a subtle choice but I think it is an extremely important distinguishing feature because I think Randal's approach was actually deceptively aggressive. In fact, let me get into the nitty gritty behind this decision.
 
 ## Edge significance
 
-The general technique Randall employed for identifying "significant" edges goes like this (I haven't read his article or the original edge significance article in some time so I might have some of the minor details fuzzed):
+The general technique Randal employed for identifying "significant" edges goes like this (I haven't read his article or the original edge significance article in some time so I might have some of the minor details fuzzed):
 
 1. Calculate the "strength" of a node (i.e. subreddit) by summing up the weights of all of its edges. This is done separately for incoming and outgoing edges.
 2. Calculate each edges normalized weight as (edge weight)/(node strength).
@@ -118,13 +128,13 @@ But, if our main goal is to create a "map" that members of the network can use t
 
 More importantly, though: this approach is actually deceptively aggressive. Consider two nodes with degree one that are connected by a single edge with high edge weight: no matter what threshold we set, this approach will always eliminate that edge, dropping both nodes from the network. Similarly, imagine an arbitrarily large clique of nodes that are all connected by equally (high) weighted edges to each other and no one else: this technique will again cause us to drop all edges in the clique and as a result to drop the clique entirely. I'd posit that in both of these scenarios, the edges that were removed were clearly "significant," but application of this purely statistical approach failed us because we had, in both cases, alternative information we could have used to identify the importance of the edges we removed.
 
-The edge significance approach is fine if we just want to extract a statistically similar subgraph, or in the absence of better heuristics for  determining edge significance. But, we're interested in much more than just finding the "backbone" subgraph, and we can actually construct much better approaches to identify "significant" edges here. There are definitely applications where this approach to edge significance is the best way to go, but I don't think this was one of them (nothing personal, Randall. Love your work). 
+The edge significance approach is fine if we just want to extract a statistically similar subgraph, or in the absence of better heuristics for  determining edge significance. But, we're interested in much more than just finding the "backbone" subgraph, and we can actually construct much better approaches to identify "significant" edges here. There are definitely applications where this approach to edge significance is the best way to go, but I don't think this was one of them (nothing personal, Randal. Love your work). 
 
-I hope to explore the difference between my approach and Randall's more in depth in a later post, but with my recent frequency of "1 blog post per year," I wouldn't hold your breath.
+I hope to explore the difference between my approach and Randal's more in depth in a later post, but with my recent frequency of "1 blog post per year," I wouldn't hold your breath.
 
 ## Coloring communities
 
-The color scheme I used was constructed very carefully. Gephi (the tool both Randall and I used to build our visualizations) by default paints communities with a randomized color palette, but I found this unsatisfying. There is no guarantee that colors won't be extremely perceptually similar, and the overall aesthetics are largely subject to chance.
+The color scheme I used was constructed very carefully. Gephi (the tool both Randal and I used to build our visualizations) by default paints communities with a randomized color palette, but I found this unsatisfying. There is no guarantee that colors won't be extremely perceptually similar, and the overall aesthetics are largely subject to chance.
 
 To try to maximize the perceptual difference between any two random communities, I built my palette by rotating through the HSL color space, which is a cylindrical color space designed based on the human visual system. HSL doesn't actually have the property of perceptual uniformity, but it's a reasonable approximation. In the future, I'd like to re-color the graph using a palette derived from the CIE color space, which does exhibit perceptual uniformity. The main reason I used HSL was because there is a simple interface to it in python, via the Seaborn package.
 
@@ -132,7 +142,7 @@ To try to maximize the perceptual difference between any two random communities,
 	<img src="/images/reddit_graphs/wheel_palette_63.png" alt="63 color HSL palette">
 </figure>
 
-After deriving a sequential palette as described above, I reorganized my palette by "striding" across the color indices with a stride of 5 (i.e. taking every 5th color), which essentially gave me a roughly repeating sequence of easily distinguished mini-palettes. The rationale behind this was to maximize the ability to distinguish between the largest communities, which are characterized by default subreddits and consequently are clustered right on top of each other in the layout. By applying this palette to communities in descending order of community size, I was able to both maximize the likelihood that two random communities are distinguishable, and maximize the distinguishability of a handful of the largest communities (specifically the top floor(n_communities/stride) = floor(5/63) = 12 communities).
+After deriving a sequential palette as described above, I reorganized my palette by "striding" across the color indices with a stride of 5 (i.e. taking every 5th color), which essentially gave me a roughly repeating sequence of easily distinguished mini-palettes. The rationale behind this was to maximize the ability to distinguish between the largest communities, which are characterized by default subreddits and consequently are clustered right on top of each other in the layout. By applying this palette to communities in descending order of community size, I was able to both maximize the likelihood that two random communities are distinguishable, and maximize the distinguishability of a handful of the largest communities (specifically the top floor(n_communities/stride) = floor(63/5) = 12 communities).
 
 <figure>
 	<img src="/images/reddit_graphs/strided_wheel.png" alt="'Stride' shuffled HSL palette, with a stride of 5">
