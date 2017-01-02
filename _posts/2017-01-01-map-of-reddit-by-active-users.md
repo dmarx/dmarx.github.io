@@ -14,7 +14,7 @@ comments: true
     </a>
 </figure>
 
-(Click the image above to visit the interactive visualization discussed below)
+Click on the image above to visit an interactive version of the reddit map discussed below.
 
 ## Background
 
@@ -124,13 +124,13 @@ The general technique Randal employed for identifying "significant" edges goes l
 
 This approach has the effect of preserving the "multi-scale" structure of the network, which essentially means that we can use this technique to extract a smaller version of the network that will exhibit statistical properties very similar to the larger network (aka the "backbone" network). If we're mainly interested in calculating statistics on our network, applying this approach will make our lives (and calculations) a lot easier. 
 
-But, if our main goal is to create a "map" that members of the network can use to navigate the network, and in particular identify esoteric sub-communities that may be relevant to them. The application of a statistically inferred threshold is very appealing because, frankly, people like p-values (despite the fact that most people don't interpret them correctly, which is a whole other issue). But it's still just a heuristic. Attaching a p-value to your heuristic doesn't necessarily make it better or worse than an alternative that doesn't leverage p-values. 
+But, that's not our goal. Our goal is to create a map that members of the network can use to navigate the network, and in particular discover esoteric sub-communities that may be relevant to them that they may have had difficulty finding via more "organic" mechanisms currently available. The application of a statistically inferred threshold is appealing because, frankly, people like p-values (despite the fact that most people don't interpret them correctly, which is a whole other issue). But it's still just a heuristic. Attaching a p-value to your heuristic doesn't necessarily make it better or worse than an alternative that doesn't leverage p-values, like relying on subject matter expertise. 
 
-More importantly, though: this approach is actually deceptively aggressive. Consider two nodes with degree one that are connected by a single edge with high edge weight: no matter what threshold we set, this approach will always eliminate that edge, dropping both nodes from the network. Similarly, imagine an arbitrarily large clique of nodes that are all connected by equally (high) weighted edges to each other and no one else: this technique will again cause us to drop all edges in the clique and as a result to drop the clique entirely. I'd posit that in both of these scenarios, the edges that were removed were clearly "significant," but application of this purely statistical approach failed us because we had, in both cases, alternative information we could have used to identify the importance of the edges we removed.
+My main problem with the "edge significance" approach is that it's actually deceptively aggressive. Consider two nodes with degree one that are connected by a single edge with high edge weight: no matter what threshold we set, this approach will always eliminate that edge, dropping both nodes from the network. Imagine a sequence of nodes that are connected in a circle such that each node has degree two: every single one of those edges will be dropped by this technique, regardless of the weights of those edges. Similarly, imagine an arbitrarily large clique of nodes that are all connected by equally (high) weighted edges to each other and no one else: this technique will again cause us to drop all edges in the clique and as a result to drop the clique entirely. I'd posit that in all of these scenarios, the edges that were removed were objectively "significant" in the context of our goal, but application of this blind statistical approach failed us because we had alternative information we could have used to identify the importance of the edges we removed.
 
 The edge significance approach is fine if we just want to extract a statistically similar subgraph, or in the absence of better heuristics for  determining edge significance. But, we're interested in much more than just finding the "backbone" subgraph, and we can actually construct much better approaches to identify "significant" edges here. There are definitely applications where this approach to edge significance is the best way to go, but I don't think this was one of them (nothing personal, Randal. Love your work). 
 
-I hope to explore the difference between my approach and Randal's more in depth in a later post, but with my recent frequency of "1 blog post per year," I wouldn't hold your breath.
+I hope to explore the difference between my approach and Randal's more in depth in a later post, but let's be honest: with my recent frequency of "1 blog post per year," I wouldn't hold your breath.
 
 ## Coloring communities
 
