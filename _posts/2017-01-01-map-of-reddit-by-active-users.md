@@ -137,7 +137,7 @@ I strongly encourage you to explore the interactive reddit map yourself. It unfo
 few selected results as static images for people who can't explore the graph themselves.
 
 
-Console gaming (Xbox One and PS4) interest community. Two most active subreddits (between September and November 2016) are /r/RocketLeagueExchange /r/DestinyTheGame:
+Console gaming (Xbox One and PS4. There's also a Nintendo community, but it's hanging out further away with the pokemon community) interest community:
 
 <figure>
     <a href="/images/reddit_graphs/RocketLeagueExchange_DestinyTheGame.png">
@@ -149,12 +149,28 @@ Detail of the computer hardware interest community surrounding /r/buildapc, a mi
 
 <figure>
     <a href="/images/reddit_graphs/gaming_pcmasterrace__detail.png">
-	<img src="/images/reddit_graphs/gaming_pcmasterrace__detail.png" alt="Reddit computer hardware community">
+	<img src="/images/reddit_graphs/gaming_pcmasterrace__detail.png" alt="Reddit Computer Hardware Community">
     </a>
 </figure>
 
 
-American Sports interest community (which is right next to the soccer interest community, not shown). Two most active subreddits (between September and November 2016) are /r/nfl and /r/CFB:
+RPG and boardgames community:
+
+<figure>
+    <a href="/images/reddit_graphs/DnD_boardgames.png">
+	<img src="/images/reddit_graphs/DnD_boardgames.png" alt="Reddit RPG/Boardgames Community">
+    </a>
+</figure>
+
+Reddit users are often stereotyped as being extemely nerdy, but don't be fooled: there are some extemely stylish people on reddit. Here's the men's fashion and lifestyle interest community:
+
+<figure>
+    <a href="/images/reddit_graphs/hiphopheads_streetwear__detail.png">
+	<img src="/images/reddit_graphs/hiphopheads_streetwear__detail.png" alt="Reddit Men's Lifestyle Community">
+    </a>
+</figure>
+
+We've got jocks too: there's a very large community focused on American Sports (which is right next to the soccer interest community, not shown):
 
 <figure>
     <a href="/images/reddit_graphs/nfl_CFB.png">
@@ -162,10 +178,51 @@ American Sports interest community (which is right next to the soccer interest c
     </a>
 </figure>
 
-Detail of the main cluster of the amateur porn, aka "gone wild" community:
+I'm not even sure what to call this... the "drama" community, characterized by subs like /r/SubredditDrama, /r/ShitRedditSays, /r/KotakuInAction, etc.
+
+<figure>
+    <a href="/images/reddit_graphs/KotakuInAction_SubredditDrama.png">
+	<img src="/images/reddit_graphs/KotakuInAction_SubredditDrama.png" alt="Reddit 'Drama' Community">
+    </a>
+</figure>
+
+The much smaller and surprisingly (to me) unrelated "red pill" community, which has a reputation for supporting misogyny:
+
+<figure>
+    <a href="/images/reddit_graphs/TheRedPill_constellation.png">
+	<img src="/images/reddit_graphs/TheRedPill_constellation.png" alt="Reddit 'Red Pill' Community">
+    </a>
+</figure>
+
+Reddit isn't all men though: there are women too. There's a sprawling community focused on makeup and beauty discussion:
+
+<figure>
+    <a href="/images/reddit_graphs/MakeupAddiction_AsianBeauty.png">
+	<img src="/images/reddit_graphs/MakeupAddiction_AsianBeauty.png" alt="Reddit Makeup Community">
+    </a>
+</figure>
+
+
+There's also a large amateur porn contingent, aka the "gone wild" community:
 
 <figure>
     <a href="/images/reddit_graphs/sex_GoneWild.png">
-	<img src="/images/reddit_graphs/sex_GoneWild.png" alt="Reddit GoneWild community">
+	<img src="/images/reddit_graphs/sex_GoneWild.png" alt="Reddit GoneWild Community">
+    </a>
+</figure>
+
+Here's reddit's stoner community:
+
+<figure>
+    <a href="/images/reddit_graphs/trees_drugs__detail1.png">
+	<img src="/images/reddit_graphs/trees_drugs__detail1.png" alt="Reddit Stoner Community">
+    </a>
+</figure>
+
+And finally, much lesser known than the stoner community, there's a fairly large community geared towards general drug use, which interestingly (bu unsurprisingly) absorbs the smaller "darknet markets" community:
+
+<figure>
+    <a href="/images/reddit_graphs/trees_drugs__detail2.png">
+	<img src="/images/reddit_graphs/trees_drugs__detail2.png" alt="Reddit Drugs Community">
     </a>
 </figure>
