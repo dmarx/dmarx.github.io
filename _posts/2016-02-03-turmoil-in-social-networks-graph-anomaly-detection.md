@@ -58,7 +58,7 @@ The following plot can be interpreted as a quantification of the monthly "chaos"
 There are two very well defined spikes here, corresponding to chaos centering around the subreddits /r/thebutton in April, and /r/Blackout2015 in June. These spikes corresond to changes in redditors behaviros in response to the following events:
 
 
-* 4/1/2015: The subreddit /r/thebutton is created for the annual April Fools joke, spawning a sprawling associated micro-community of about 20 new subreddits.
+* 4/1/2015: The subreddit /r/thebutton is created for the annual April Fools joke, spawning a [sprawling associated micro-community](http://dmarx.github.io/SubredditMentionsGraph/network/#thebutton) of about 20 new subreddits.
 
 
 * 7/2/2015: Victoria is fired, resulting in the "2015 Blackout". In response, a new subreddit, /r/ModSupport, was created to centralize mod-admin communication, and CEO Ellen Pao stepped down (a week later on 7/10/2015) to be replaced by Steve Huffman. Additionally, subreddits such as /r/Blackout2015 and /r/WatchRedditDie were formed to centralize expressions of frustration with the state of reddit and the behaviors of community members in leadership roles (volunteer moderators, or "mods", and paid members of reddit staff, or "admins").
