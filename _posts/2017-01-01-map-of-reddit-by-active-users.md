@@ -7,7 +7,6 @@ modified:
 comments: true
 ---
 
-
 <figure>
     <a href="https://dmarx.github.io/reddit-map/">
         <img src="/images/reddit_graphs/full_graph.png">
@@ -131,6 +130,8 @@ The rationale behind this was to maximize the ability to distinguish between the
 
 This graph is mainly powerful to help users find communities with similar interests where people are engaged in the comments. As a next step, I'd like to infer the reddit cross-posting network as well to identify subreddits that are related by content and merge that network into this one. This would capture connections to subreddits whose users may not be especially engaged in the comments, but where the content might still be interesting to someone exploring the graph.
 
+At the very least, I hope to keep the graph up-to-date with the most current public comments dataset on google bigquery, which I think is one-month lagged to the live comment activity.
+
 ## Some Results
 
 I strongly encourage you to explore the interactive reddit map yourself. It unfortunately is not supported on mobile presently, so here are a 
@@ -226,3 +227,7 @@ And finally, much lesser known than the stoner community, there's a fairly large
 	<img src="/images/reddit_graphs/trees_drugs__detail2.png" alt="Reddit Drugs Community">
     </a>
 </figure>
+
+## Acknowledgements
+
+First and foremost, huge thanks to [/u/stuck_in_the_matrix](http://www.reddit.com/u/stuck_in_the_matrix) for collecting the dataset of public comments I used for this project. Also, thanks go out to Felipe Hoffa from Google, who published this data set as a public collection on BigQuery. Thanks also to Oxford's OII and JISC for building the incredibly useful template that powers the sigma.js webapp, and finally thanks to Randy Olson for improvements he made to the template.
