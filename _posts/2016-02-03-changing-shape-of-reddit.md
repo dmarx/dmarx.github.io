@@ -1,7 +1,7 @@
 ---
 layout: post
-title: The Changing Shape of Reddit
-excerpt: "Quantitatively analyzing turmoil in social networks with graph anomaly detection"
+title: Identifying Turmoil in Social Networks With Graph Anomaly Detection
+excerpt: "Using graph anomaly detection to identify unusual changes in the Reddit community structure that are characteristic of community turmoil"
 tags: [link analysis, igraph, R, network analysis, social network analysis, anomaly detection, reddit]
 modified:
 comments: true
