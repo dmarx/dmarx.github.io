@@ -41,7 +41,7 @@ To construct the graph described below, I perform exactly this bipartite project
 
 Let \\(n\\) denote the number of nodes of the primary class (in this case, subreddits), and \\(m\\) denote the number of nodes of the secondary class (users) through which we would like to connect nodes of the primary class. Let \\(A\\) denote the \\(n x m\\) adjacency matrix of the network. Let \\(P\\) denote the one-mode projection onto the primary class.
 
-The simple bipartite projection is equivalent to calculating the number of length-2 paths between each pair of nodes in the network. There's a convenient linear algebra trick for calculating this: \\(P=A*A^T\\). The bipartite node degree \\(d\\) is then given by the row vector \\(d=rowsums(A)\\). Let \\(d'\\) be given by taking the inverse of each element of \\(d\\). Then the edge normalization described above is performed simply by elementwise multiplying \\(d'\\) with the transpose of \\(P\\) and then taking the transpose of the result.
+The simple bipartite projection is equivalent to calculating the number of length-2 paths between each pair of nodes in the network. There's a convenient linear algebra trick for calculating this: \\(P=A*A^T\\). The bipartite node degree \\(d\\) is then given by the row vector \\(d=rowsums(A)\\). Then the edge normalization described above is performed simply by elementwise dividing \\(d\\) with the transpose of \\(P\\) and then taking the transpose of the result.
 
 Concretely, here's a code snippet demonstrating how to perform this operation in R:
 
