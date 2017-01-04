@@ -41,7 +41,7 @@ By comparing how relationships between subreddits change over time, we can ident
 
 ### Methodological details for graph anomaly detection
 
-One approach to this kind of anomaly detection was suggested by Serrano (2009) in their application of scan statistics to the Enron email network. Their problem was similar in that they were trying to identify time periods during which their network of interest was undergoing upheaval.
+One approach to this kind of anomaly detection was suggested by [Priebe et. al. (2005)](http://www.cis.jhu.edu/~parky/Enron/) in their application of scan statistics to the Enron email network. Their problem was similar in that they were trying to identify time periods during which their network of interest was undergoing upheaval.
 
 The approach is as follows: for each node in the graph, isolate its community out to some depth \\(k\\) (usually k=1 or 2). Then calculate some statistic over this subgraph, which we will call the "scan statistic." The scan statistic used by Serrano is the sum of edge weights in the subgraph. We calculate the scan statistic for each node for each time step. Then, we standardize our observations by looking back across \\(\tau\\) timesteps. Finally, for each timestep we calculate the max value taken by the scan statistic for any node in that time period, and examine the distribution of this max over all time periods to identify anomalous time steps.
 
