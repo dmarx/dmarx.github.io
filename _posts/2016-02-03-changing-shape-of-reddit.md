@@ -8,9 +8,7 @@ comments: true
 ---
 
 <figure>
-    <a href="https://dmarx.github.io/reddit-map/">
-        <img src="/images/mad_as_heck.jpg">
-    </a>
+    <img src="/images/mad_as_heck.jpg">
 </figure>
 
 (This is an article I wrote up 2/3/2016 but never got around to publishing. I'm post-dating it on the blog to place it in the appropriate timeline of my work, but I'm actually only just publishing this 1/4/2017. I hope to revisit this analysis and update it with more recent reddit data soon, in particular to analyze the effect of the 2016 US Presidential Eleciton on the reddit community)
@@ -55,7 +53,7 @@ The approach is as follows: for each node in the graph, isolate its community ou
 The following plot can be interpreted as a quantification of the monthly "chaos"" in the reddit community over the last year.
 
 <figure>
-    <a href="https://dmarx.github.io/reddit-map/">
+    <a href="/images/reddit_chaos_2015.png">
         <img src="/images/reddit_chaos_2015.png">
     </a>
 </figure>
