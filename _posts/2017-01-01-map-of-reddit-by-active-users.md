@@ -1,7 +1,7 @@
 ---
 layout: post
 title: Mapping reddit's active communities
-excerpt: "Heuristics for social media graph extraction, validation, and visualization"
+excerpt: "An improved bipartite projection for social network modeling"
 tags: [link analysis, networkx, gephi, python, network analysis, reddit]
 modified:
 comments: true
