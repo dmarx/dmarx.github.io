@@ -14,7 +14,7 @@ comments: true
     </a>
 </figure>
 
-Click on the image above to visit an interactive version of the reddit map discussed below.
+Click on the image above to visit an interactive version of the reddit map discussed below (not supported on mobile). Jump to the bottom of the article if you'd like to see a selection of community clusters I found interesting.
 
 ## Background
 
@@ -47,7 +47,7 @@ Concretely, here's a code snippet demonstrating how to perform this operation in
 
 {% gist 8981ad329506b250498f1f52c3050a9c %}
 
-I seriously doubt this is a truly novel approach, but although I haven't done a thorough lit review it at least particularly common, to the best of my knowledge. I've found it to be extremely effective in this project and recommend it to other researchers investigating similar bipartite social networks.
+I seriously doubt this is a truly novel approach, but although I haven't done a thorough lit review it at least isn't particularly common, to the best of my knowledge. I've found it to be extremely effective in this project and recommend it to other researchers investigating similar bipartite social networks.
 
 ## Methodology
 
@@ -75,47 +75,6 @@ That's the high level overview. Concretely, here's how this graph was constructe
 
 * Identify communities algorithmically (via Gephi's modularity method with reduced resolution chosen qualitatively)
 
-## Some Results
-
-I strongly encourage you to explore the interactive reddit map yourself. It unfortunately is not supported on mobile presently, so here are a 
-few selected results as static images for people who can't explore the graph themselves.
-
-
-Console gaming (Xbox One and PS4) interest community. Two most active subreddits (between September and November 2016) are /r/RocketLeagueExchange /r/DestinyTheGame:
-
-<figure>
-    <a href="/images/reddit_graphs/RocketLeagueExchange_DestinyTheGame.png">
-	<img src="/images/reddit_graphs/RocketLeagueExchange_DestinyTheGame.png" alt="Console Gaming Reddit Community">
-    </a>
-</figure>
-
-Detail of the computer hardware interest community surrounding /r/buildapc, a microcommunity embedded in the larger high-performance computing community characterized by /r/gaming and /r/pcmasterrace:
-
-<figure>
-    <a href="/images/reddit_graphs/gaming_pcmasterrace__detail.png">
-	<img src="/images/reddit_graphs/gaming_pcmasterrace__detail.png" alt="Reddit computer hardware community">
-    </a>
-</figure>
-
-
-American Sports interest community (which is interestingly proximal to European sports community -- not shown -- which is dominated by soccer subreddits). Two most active subreddits (between September and November 2016) are /r/nfl and /r/CFB:
-
-<figure>
-    <a href="/images/reddit_graphs/nfl_CFB.png">
-	<img src="/images/reddit_graphs/nfl_CFB.png" alt="American Sports Reddit Community">
-    </a>
-</figure>
-
-
-
-Detail of the main cluster of the amateur porn, aka "gone wild" community:
-
-<figure>
-    <a href="/images/reddit_graphs/sex_GoneWild.png">
-	<img src="/images/reddit_graphs/sex_GoneWild.png" alt="Reddit GoneWild community">
-    </a>
-</figure>
-
 ## Previous work
 
 I want to give a shout out to Dr. Randal Olson (/u/rhiever) who was one of the first people to experiment with [mapping reddit](http://www.randalolson.com/2014/10/27/the-reddit-world-map/), and certainly the first to go about getting his results [published academically](https://peerj.com/articles/cs-4/). My approach is similar to his, both in how edges were inferred and how the data was visualized, but I want to highlight a few key differences:
@@ -126,7 +85,9 @@ I want to give a shout out to Dr. Randal Olson (/u/rhiever) who was one of the f
 
 * Additionally, I provided a mechanism to allow users to constrain their attention to the algorithmically inferred communities in the reddit graph. To help users navigate these communities, I labelled them according to "prototype" subreddits. I designated the two most active subreddits in each community as the labelling prototypes. This gave very good results, but in retrospect I might have gotten better results for a handful of communities if I had instead designated prototypes based on subscribership (e.g. the "RocketLeagueExchange/DestinyTheGame" community would instead have been labelled "ps4/DestinyTheGame"). 
 
-* Where Randal used a statistical approach determine which edges to remove, I relied on my subject matter expertise to construct appropriate thresholds. This seems like a subtle choice but I think it is an extremely important distinguishing feature because I think Randal's approach was actually deceptively aggressive. In fact, let me get into the nitty gritty behind this decision.
+* Randall inferred edge weights from a simple bipartite projection, whereas I used an edge weighting scheme that contextualized mutual user counts as population proportions.
+
+* Where Randal used a statistical approach determine which edges to remove, I leveraged subject matter expertise to construct appropriate thresholds. This seems like a subtle choice but I think it is an extremely important distinguishing feature because I think Randal's approach was actually deceptively aggressive. Let's dig into some of the nuances behind this particular decision.
 
 ## Edge significance
 
@@ -150,22 +111,61 @@ I hope to explore the difference between my approach and Randal's more in depth 
 
 ## Coloring communities
 
-The color scheme I used was constructed very carefully. Gephi (the tool both Randal and I used to build our visualizations) by default paints communities with a randomized color palette, but I found this unsatisfying. There is no guarantee that colors won't be extremely perceptually similar, and the overall aesthetics are largely subject to chance.
+Gephi (the tool both Randal and I used to build our visualizations) by default paints communities with a randomized color palette, but I found this unsatisfying. The resulting aesthetics can be messy, and just by chance a lot of colors end up being very perceptually similar. 
 
-To try to maximize the perceptual difference between any two random communities, I built my palette by rotating through the HSL color space, which is a cylindrical color space designed based on the human visual system. HSL doesn't actually have the property of perceptual uniformity, but it's a reasonable approximation. In the future, I'd like to re-color the graph using a palette derived from the CIE color space, which does exhibit perceptual uniformity. The main reason I used HSL was because there is a simple interface to it in python, via the Seaborn package.
+To try to increase the perceptual difference between any two random communities, I built my palette by rotating through the HSL color space, which is a cylindrical color space designed based on the human visual system. HSL doesn't actually exhibit perceptual uniformity, but it's a reasonable approximation. In the future, I'd like to re-color the graph using a palette derived from the CIE color space, which does exhibit perceptual uniformity. The main reason I used HSL was because there is a simple interface to it in python, via the Seaborn package.
 
 <figure>
 	<img src="/images/reddit_graphs/wheel_palette_63.png" alt="63 color HSL palette">
 </figure>
 
-After deriving a sequential palette as described above, I reorganized my palette by "striding" across the color indices with a stride of 5 (i.e. taking every 5th color), which essentially gave me a roughly repeating sequence of easily distinguished mini-palettes. The rationale behind this was to maximize the ability to distinguish between the largest communities, which are characterized by default subreddits and consequently are clustered right on top of each other in the layout. By applying this palette to communities in descending order of community size, I was able to both maximize the likelihood that two random communities are distinguishable, and maximize the distinguishability of a handful of the largest communities (specifically the top floor(n_communities/stride) = floor(63/5) = 12 communities).
+After deriving a sequential palette, I reorganized my palette by "striding" across the color indices with a stride of 5 (i.e. taking every 5th color).
 
 <figure>
 	<img src="/images/reddit_graphs/strided_wheel.png" alt="'Stride' shuffled HSL palette, with a stride of 5">
 </figure>
 
-## Conclusion
+The rationale behind this was to maximize the ability to distinguish between the largest communities, which are characterized by default subreddits and consequently are clustered together. By applying this shuffled palette to communities in descending order of community size, I was able to both maximize the likelihood that two random communities are distinguishable, maximize distinguishability of a handful of the largest communities (specifically the top floor(n_communities/stride) = floor(63/5) = 12 communities), and additionally create a pleasing rainbow effect in the middle of the visualization from the default subreddits.
 
-This graph is mainly powerful to help users find people with similar interests: as a next step, I'd like to infer the reddit cross-posting network as well to identify subreddits that are related by content and merge that network into this one. This would capture connections to subreddits whose users may not be especially engaged in the comments, but should still otherwise be considered "active" due to the volume/velocity of content.
+## Final thoughts
 
-This was certainly not the first attempt to map reddit, nor will it be the last. But for a variety of reasons (which I'll delve into in a future post), I think it's the most useful map available. If you're a redditor, I hope it helps you find something new that interests you! 
+This graph is mainly powerful to help users find communities with similar interests where people are engaged in the comments. As a next step, I'd like to infer the reddit cross-posting network as well to identify subreddits that are related by content and merge that network into this one. This would capture connections to subreddits whose users may not be especially engaged in the comments, but where the content might still be interesting to someone exploring the graph.
+
+## Some Results
+
+I strongly encourage you to explore the interactive reddit map yourself. It unfortunately is not supported on mobile presently, so here are a 
+few selected results as static images for people who can't explore the graph themselves.
+
+
+Console gaming (Xbox One and PS4) interest community. Two most active subreddits (between September and November 2016) are /r/RocketLeagueExchange /r/DestinyTheGame:
+
+<figure>
+    <a href="/images/reddit_graphs/RocketLeagueExchange_DestinyTheGame.png">
+	<img src="/images/reddit_graphs/RocketLeagueExchange_DestinyTheGame.png" alt="Console Gaming Reddit Community">
+    </a>
+</figure>
+
+Detail of the computer hardware interest community surrounding /r/buildapc, a microcommunity embedded in the larger high-performance computing community characterized by /r/gaming and /r/pcmasterrace:
+
+<figure>
+    <a href="/images/reddit_graphs/gaming_pcmasterrace__detail.png">
+	<img src="/images/reddit_graphs/gaming_pcmasterrace__detail.png" alt="Reddit computer hardware community">
+    </a>
+</figure>
+
+
+American Sports interest community (which is right next to the soccer interest community, not shown). Two most active subreddits (between September and November 2016) are /r/nfl and /r/CFB:
+
+<figure>
+    <a href="/images/reddit_graphs/nfl_CFB.png">
+	<img src="/images/reddit_graphs/nfl_CFB.png" alt="American Sports Reddit Community">
+    </a>
+</figure>
+
+Detail of the main cluster of the amateur porn, aka "gone wild" community:
+
+<figure>
+    <a href="/images/reddit_graphs/sex_GoneWild.png">
+	<img src="/images/reddit_graphs/sex_GoneWild.png" alt="Reddit GoneWild community">
+    </a>
+</figure>
