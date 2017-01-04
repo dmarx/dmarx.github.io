@@ -27,10 +27,7 @@ A graph is a collection of entities (nodes) connected by relationships of some k
 
 User engagement on internet communities like reddit follows a 1-9-90 rule, which means that there are a lot of low actvitity users who will essentially be "noise" in our analysis. To clean up our graph, it's helpful to focus only on the behaviors of "active users. For the purpose of this analysis, I've used a fairly liberal definition of "active": 
 
-* A user is "active" in a subreddit if there were at least two submissions in that subreddit in which the user commented at least twice.
-
-* A user is considered active during a given time period if they were active in at least one (two? double check) subreddit.
-
+* A user is "active" in a subreddit if there were at least two submissions in that subreddit in which the user commented.
 * A subreddit is considered active during a given time period if it has at least one active user during that month.
 
 To mitigate the effect of bots and users promoting new subreddits (and to generally limit the effect that individuals can have on the overall community topology), I only considered edges with a weight of at least "2".  
