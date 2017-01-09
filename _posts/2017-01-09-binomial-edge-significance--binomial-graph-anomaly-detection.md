@@ -46,11 +46,15 @@ In other words, edge count grows linearly with node count in the significance gr
 I've found that performing anomaly detection procedures on the significance graphs has similar or better results (qualitatively), which supports the the theory that these edges contain the bulk of the information relevant to identifying anomalous community behaviour. Let's compare the results of applying the anomaly detection procedure using a edge count for the local scan statistic on order-1 neighborhoods (i.e. k=1) normalized against the previous two time periods (tau=2) on the reddit public comments dataset from January 2008 through November 2016. 
 
 <figure>
-    <img src="/images/edge_signif/filtered_results_top10_2008_2016.png">
+    <a href="/images/edge_signif/filtered_results_top10_2008_2016.png">
+        <img src="/images/edge_signif/filtered_results_top10_2008_2016.png">
+    </a>
 </figure>
 
 <figure>
-    <img src="/images/edge_signif/unfiltered_results_top10_2008_2016.png">
+    <a href="/images/edge_signif/unfiltered_results_top10_2008_2016.png">
+        <img src="/images/edge_signif/unfiltered_results_top10_2008_2016.png">
+    </a>
 </figure>
 
 Because the graphs in the filtered dataset are much smaller we can't compare the values of the scan statistics directly, but if we normalize the scan statistics relative to the max value we observed (after removing the January 2015 observation, which was a tremendous outlier in both datasets that I need to investigate) we see that the scan statistics performed very similarly. Despite the differences in the two data sets, the procedure identified the same anomaly locus in 22 periods. For the most part, the statistics agree about the most turbulent periods in the graph.
