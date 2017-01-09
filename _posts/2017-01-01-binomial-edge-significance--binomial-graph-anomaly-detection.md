@@ -1,6 +1,6 @@
 ---
 layout: post
-title: Improving the performance and scalability of graph anomaly detection with a new approach to edge significance for Dynamic Bipartite Graphs
+title: Improving the performance and scalability of graph anomaly detection with a new approach to edge significance for dynamic bipartite projections
 excerpt: "Identifying edges significant to graph anomaly calculations by building on the binomial model for bipartite networks"
 tags: [link analysis, igraph, R, network analysis, social network analysis, anomaly detection, reddit]
 modified:
