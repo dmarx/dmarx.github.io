@@ -43,9 +43,17 @@ In other words, edge count grows linearly with node count in the significance gr
 ## Results
 
 
-I've found that performing anomaly detection procedures on the significance graphs has similar or better results (qualitatively), which supports the the theory that these edges contain the bulk of the information relevant to identifying anomalous community behaviour. 
+I've found that performing anomaly detection procedures on the significance graphs has similar or better results (qualitatively), which supports the the theory that these edges contain the bulk of the information relevant to identifying anomalous community behaviour. Let's compare the results of applying the anomaly detection procedure using a edge count for the local scan statistic on order-1 neighborhoods (i.e. k=1) normalized against the previous two time periods (tau=2) on the reddit public comments dataset from January 2008 through November 2016. 
 
-Let's compare the results of applying the anomaly detection procedure using a edge count for the local scan statistic on order-1 neighborhoods (i.e. k=1) normalized against the previous two time periods (tau=2) on the reddit public comments dataset from January 2008 through November 2016. Because the graphs in the filtered dataset are much smaller we can't compare the values of the scan statistics directly, but if we normalize the scan statistics relative to the max value we observed (after removing the January 2015 observation, which was a tremendous outlier in both datasets that I need to investigate) we see that the scan statistics performed very similarly. Despite the differences in the two data sets, the procedure identified the same anomaly locus in 22 periods. For the most part, the statistics agree about the most turbulent periods in the graph.
+<figure>
+    <img src="/images/edge_signif/filtered_results_top10_2008-2016.png">
+</figure>
+
+<figure>
+    <img src="/images/edge_signif/unfiltered_results_top10_2008-2016.png">
+</figure>
+
+Because the graphs in the filtered dataset are much smaller we can't compare the values of the scan statistics directly, but if we normalize the scan statistics relative to the max value we observed (after removing the January 2015 observation, which was a tremendous outlier in both datasets that I need to investigate) we see that the scan statistics performed very similarly. Despite the differences in the two data sets, the procedure identified the same anomaly locus in 22 periods. For the most part, the statistics agree about the most turbulent periods in the graph.
 
 <figure>
     <img src="/images/edge_signif/matched_bevhaior.png">
@@ -78,13 +86,22 @@ Let's hone in on the results from the last two years of data and compare the res
 |2016/10|westworld|NintendoSwitch|2494|132032|47%|45%||
 |2016/11|the_meltdown|shittyrainbow6|2932|141939|55%|49%||
 
-
-Again, we can see that the two approaches achieved similar results, especially in many of the most tumultuous periods. There were, however, some important places where they disagree. The significance filtered approach seems to have had "better" hits:
+Again, we can see that the two approaches achieved similar results, especially in many of the most tumultuous periods. Concretely, the highlighted periods/subreddits that the filtered and unfiltered procedures agree upon are associated with the following events:
 
 |Period|Anomaly Nexus|Event likely associated with the observed anomaly|
 |--------|---------|--------|
-|February 2015|/r/betterCakkSaul|Better Call Saul, the much awaited spin-off of Breaking Bad, is released|
-|May 2015|/r/Boxing|The Floyd Mayweather vs. Manny Pacquiao is the most hyped boxing match in recent memory|
+|April 2015|/r/thebutton|Reddit's 2015 April fools "prank" spawns a [sprawling micro-community](images/reddit_graphs/the_button__mentions.png)|
+|July 2015|/r/Blackout2015|The firing of a Reddit employee triggers site-wide unrest in the form of protests and demonstrations of various kinds|
+|August 2015|/r/MensLib|Not gonna lie: I consider myself something of a Reddit historian at this point, but I have no idea what was significant about this community August 2015|
+|December 2015|/r/MakingAMurderer|The Netflix series Making A Murder premiers to significant acclaim|
+|June 2016|/r/uncensorednews|The worst mass shooting in US history occurs at the Pulse Nightclub in Orlando|
+
+There were, however, some important places where they disagree. The significance filtered approach seems to generally have had "better" hits:
+
+|Period|Anomaly Nexus|Event likely associated with the observed anomaly|
+|--------|---------|--------|
+|February 2015|/r/betterCallSaul|Better Call Saul, the much awaited spin-off of Breaking Bad, is released|
+|May 2015|/r/Boxing|The Floyd Mayweather vs. Manny Pacquiao fight is the most anticipated boxing match in recent memory|
 |October 2015|/r/Baseball|The 2015 World Series occurs|
 |November 2015|/r/JessicaJones|The Netflix original TV series Jessica Jones is released to significant acclaim|
 |April 2016|/r/Sweden|Sweden's housing minister resigns after comparing Israel to Nazi Germany|
@@ -104,7 +121,7 @@ There are a few cases where it looks like unfiltered procedure had hits worthy o
 |May 2016|/r/Mr_Trump|The ongoing US presidential election: [in-fighting](http://www.vox.com/2016/5/21/11701482/donald-trump-subreddit-drama-europeans) occurs in the larger community of Reddit's Trump supporters|
 |August 2016|/r/AskThe_Donald|The ongoing US presidential election|
 
-In all of these cases, it is not clear that this suggests any fault on the part of the filtered version of the procedure: during all four of those periods, the filtered procedure honed in on a subreddit that was the focal point for a significant event in the community. There isn't necessarily a single source of community tumult that is potentially of interest to us in a community as large, wide, and diverse as Reddit, so small variations in anomaly detection procedure can produce different but equally interesting results. I hope to share some of the results of additional modifications to the anomaly detection procedure in the near future (such as expanding the neighborhood beyond k=1 and using different local scan statistics).
+In all of these cases, this disagreement does not appear to suggest any fault or weakness on the part of the filtered version of the procedure: in all four of those periods, the filtered procedure honed in on a subreddit that was the focal point for a significant event in the community. There isn't necessarily a single source of community tumult that is potentially of interest to us in a community as large, wide, and diverse as Reddit, so small variations in anomaly detection procedure can produce different but equally interesting results. I hope to share some of the results of additional modifications to the anomaly detection procedure in the near future (such as expanding the neighborhood beyond k=1 and using different local scan statistics).
 
 Furthermore, because the filtered graphs are significantly smaller, the anomaly procedure is accomplished in seconds where it previously took several minutes, for first order local scan neighborhoods. Here are some performance comparisons between the significance filtered and unfiltered datasets (2007-2016, monthly graphs). All experiments performed on a conventional laptop (and for all experiments, tau=2):
 
