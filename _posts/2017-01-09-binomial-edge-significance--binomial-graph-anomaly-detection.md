@@ -17,31 +17,9 @@ This blog post discusses my most recent research in a series of experiments that
 
 For each edge in the "current" time slice of the graph we are interested in, we infer the expected activity by summing up the successes and trials associated with that edge over a window of time slices of the recent past. This gives us a "baseline" proportion. We can then identify edges that exhibit statistically significant increases in activity by invoking a simple test for difference in proportions. We then filter each time to statistically significant edges, forming a graph that specifically models significant increases in activity. 
 
-The resulting "signficance graphs" are orders of magnitude smaller -- by edge count and positive-degree nodes -- than their unfiltered counterparts. 
-
-<figure>
-    <img src="/images/edge_signif/vcount.png">
-</figure>
-
-
-<figure>
-    <img src="/images/edge_signif/log_ecount.png">
-</figure>
-
-Additionally, the ratio of vertices to edges is roughly constant (approximately 0.245) in the filtered graph, whereas this ratio approaches zero as the graph grows in the unfiltered graph. 
-
-<figure>
-    <img src="/images/edge_signif/log_vcount_over_ecount.png">
-</figure>
-
-In other words, edge count grows linearly with node count in the significance graphs, but edge count grows much faster than node count in the unfiltered graphs.
-
-<figure>
-    <img src="/images/edge_signif/vcount_vs_ecount.png">
-</figure>
-
 ## Results
 
+### Qualitative performance
 
 I've found that performing anomaly detection procedures on the significance graphs has similar or better results (qualitatively), which supports the the theory that these edges contain the bulk of the information relevant to identifying anomalous community behaviour. Let's compare the results of applying the anomaly detection procedure using a edge count for the local scan statistic on order-1 neighborhoods (i.e. k=1) normalized against the previous two time periods (tau=2) on the reddit public comments dataset from January 2008 through November 2016. 
 
@@ -127,6 +105,32 @@ There are a few cases where it looks like unfiltered procedure had hits worthy o
 
 In all of these cases, this disagreement does not appear to suggest any fault or weakness on the part of the filtered version of the procedure: in all four of those periods, the filtered procedure honed in on a subreddit that was the focal point for a significant event in the community. There isn't necessarily a single source of community tumult that is potentially of interest to us in a community as large, wide, and diverse as Reddit, so small variations in anomaly detection procedure can produce different but equally interesting results. I hope to share some of the results of additional modifications to the anomaly detection procedure in the near future (such as expanding the neighborhood beyond k=1 and using different local scan statistics).
 
+### Data compression
+
+The "signficance graphs" resulting from this edge threshholding are orders of magnitude smaller -- by edge count and positive-degree nodes -- than their unfiltered counterparts. 
+
+<figure>
+    <img src="/images/edge_signif/vcount.png">
+</figure>
+
+<figure>
+    <img src="/images/edge_signif/log_ecount.png">
+</figure>
+
+Additionally, the ratio of vertices to edges is roughly constant (approximately 0.245) in the filtered graph, whereas this ratio approaches zero as the graph grows in the unfiltered graph. 
+
+<figure>
+    <img src="/images/edge_signif/log_vcount_over_ecount.png">
+</figure>
+
+In other words, edge count grows linearly with node count in the significance graphs, but edge count grows much faster than node count in the unfiltered graphs.
+
+<figure>
+    <img src="/images/edge_signif/vcount_vs_ecount.png">
+</figure>
+
+### Performance gains
+
 Furthermore, because the filtered graphs are significantly smaller, the anomaly procedure is accomplished in seconds where it previously took several minutes, for first order local scan neighborhoods. Here are some performance comparisons between the significance filtered and unfiltered datasets (2007-2016, monthly graphs). All experiments performed on a conventional laptop (and for all experiments, tau=2):
 
 |Procedure|Neighborhood order (k)|Time|
@@ -140,5 +144,7 @@ Furthermore, because the filtered graphs are significantly smaller, the anomaly 
 
 ## Conclusion
 
-The application of binomial significance edge thresholding to the dynamic bipartite projection of a user-community social network results in a significant distillation of the information relevant to the anomaly detection task. The resulting sequence of graphs are orders of magnitude smaller, and the relationship between node count and edge count stabilizes from an exponential to a linear relationship. This suggests that as node count increases, the relative performance gain from applying this procedure will increase rapidly. This increased performance does not come at any cost to the quality of our results and in fact appears to improve the quality of the anomaly detection procedure, which makes sense given that the justification for the thresholding we are performing is closely tied to the particular kinds of events we are hoping to detect. Additionally, significantly reducing the edge count gives us much more flexibility in our ability to experiment with modifications to the anomaly detection procedure, as running local scan statistics on higher order neighborhoods (or even just playing with the particular local scan statistic we are using) becomes significantly more tractable on conventional hardware. A more complex anomaly detection procedure doesn't necessarily ensure better results, but at least we now have the opportunity to experiment.
+The application of binomial significance edge threshholding to the dynamic bipartite projection of a user-community social network results in a significant distillation of the information relevant to the anomaly detection task. The resulting sequence of graphs are orders of magnitude smaller, and the relationship between node count and edge count stabilizes to a linear relationship. This suggests that as node count increases, the relative performance gains from applying this procedure increase rapidly. This increased performance does not come at any noticeable cost to the quality of our results: in fact, it appears to improve the quality, which makes sense given that the justification for the thresholding we are performing is closely tied to the particular kinds of events we are hoping to detect. 
+
+Additionally, significantly reducing the edge count gives us much more flexibility in our ability to experiment with modifications to the anomaly detection procedure, as running local scan statistics on higher order neighborhoods (or even just playing with the particular local scan statistic we are using) becomes significantly more tractable on conventional hardware. A more complex anomaly detection procedure doesn't necessarily ensure better results, but at least we now have the opportunity to experiment.
 
