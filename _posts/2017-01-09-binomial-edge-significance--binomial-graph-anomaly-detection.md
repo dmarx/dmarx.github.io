@@ -7,15 +7,15 @@ modified:
 comments: true
 ---
 
-This blog post discusses my most recent research in a series of experiments that I hope to publish academically soon. A good place to get some context on what I'm talking about is the first article in the series: [Identifying Turmoil in Social Networks With Graph Anomaly Detection](http://dmarx.github.io/turmoil-in-social-networks-graph-anomaly-detection/). In particular, you should check out the section **Methodological details for graph anomaly detection**, as the discussion below presupposes familiarity with the procedure described there.
-
 ## Background
 
-[Last week](http://dmarx.github.io/map-of-reddit-by-active-users.html), I described a bipartite projection that produces graph model whose edges can be interpreted as binomial probabilities. These probabilities are represented by a number of successes (in the particular example from last week, the count of mutual users) and a number of total trials (the total number of active users for a particular subreddit). By performing this projection over a series of time slices of a dynamic graph (i.e. a graph with a time component) we get a series of binomials associated with each edge over time. This lends itself very nicely to the problem of anomaly detection: in the case of the social network I am studying (reddit), I am particularly interested in unusual spikes of activity.
+This blog post discusses my most recent research in a series of experiments that I hope to publish academically soon. A good place to get some context on what I'm talking about is the first article in the series: [Identifying Turmoil in Social Networks With Graph Anomaly Detection](http://dmarx.github.io/turmoil-in-social-networks-graph-anomaly-detection/). In particular, you should check out the section **Methodological details for graph anomaly detection**, as the discussion below presupposes familiarity with the procedure described there.
 
 ## Procedure
 
-For each edge in the "current" time slice of the graph we are interested in, we infer the expected activity by summing up the successes and trials associated with that edge over a window of time slices of the recent past. This gives us a "baseline" proportion. We can identify edges that exhibit statistically significant increases in activity by invoking a simple test for difference in proportions. We then filter each time to statistically significant edges, forming a graph that specifically models significant increases in activity. 
+[Last week](http://dmarx.github.io/map-of-reddit-by-active-users.html), I described a bipartite projection that produces a graph model whose edges can be interpreted as binomial probabilities. These probabilities are represented by a number of successes (in the particular example from last week, the count of mutual users) and a number of total trials (the total number of active users for a particular subreddit). By performing this projection over a series of time slices of a dynamic graph (i.e. a graph with a time component) we get a series of binomials associated with each edge over time. This lends itself very nicely to the problem of anomaly detection: in the case of the social network I am studying (reddit), I am particularly interested in unusual spikes of activity across the graph, and these "spikes" have a very straight-forward interpretation at the edge level when we apply this binomial framework.
+
+For each edge in the "current" time slice of the graph we are interested in, we infer the expected activity by summing up the successes and trials associated with that edge over a window of time slices of the recent past. This gives us a "baseline" proportion. We can then identify edges that exhibit statistically significant increases in activity by invoking a simple test for difference in proportions. We then filter each time to statistically significant edges, forming a graph that specifically models significant increases in activity. 
 
 The resulting "signficance graphs" are orders of magnitude smaller -- by edge count and positive-degree nodes -- than their unfiltered counterparts. 
 
@@ -54,7 +54,7 @@ Let's compare the results of applying the anomaly detection procedure using a ed
 Let's hone in on the results from the last two years of data and compare the results side by side. In the following table, "nexus anomaly" denotes the node in the graph (i.e. the subreddit) that had the highest value for the local scan statistic in that period.
 
 |date|Anomaly Nexus (filtered)|Anomaly Nexus (unfiltered)|scan statistic (filtered)|scan statistic (unfiltered)|Normalized scan statistic (filtered)|Normalized scan statistic (unfiltered)|Does Anomaly Nexus Match?|
-|----||----||----||----||----||----||----||----|
+|----||----||----||----:||----:||----:||----:||:----:|
 |2015/02|betterCallSaul|FeelsLikeTheFirstTime|796.9093|46823|0.15078701|0.1613362||
 |2015/03|projecteternity|dnbhl|332|36462|0.0628193|0.1256357||
 |2015/04|thebutton|thebutton|5285|290220|1|1|X|
