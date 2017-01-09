@@ -108,7 +108,7 @@ In all of these cases, it is not clear that this suggests any fault on the part 
 Furthermore, because the filtered graphs are significantly smaller, the anomaly procedure is accomplished in seconds where it previously took several minutes, for first order local scan neighborhoods. Here are some performance comparisons between the significance filtered and unfiltered datasets (2007-2016, monthly graphs). All experiments performed on a conventional laptop (and for all experiments, tau=2):
 
 |Procedure|Neighborhood order (k)|Time|
-|--------|:---------:|--------:|
+|:----:|:----:|----:|
 |Unfiltered|1|3.5 minutes (215 seconds)|
 |Unfiltered|2|Stopped after an hour|
 |Unfiltered|3|Not attempted|
