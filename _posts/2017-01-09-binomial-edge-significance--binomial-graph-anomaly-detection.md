@@ -94,7 +94,7 @@ There were, however, some important places where they disagree. The significance
 |October 2016|/r/westworld|The HBO series WestWorld debuts to significant acclaim|
 |November 2016|/r/the_meltdown|Donald Trump defies predictions and wins the US Presidential election|
 
-There are a few cases where it looks like unfiltered procedure had hits worthy of note not caught by the filtered procedure
+There are a few cases where it looks like the unfiltered procedure had hits worthy of note not caught by the filtered procedure
 
 |Period|Anomaly Nexus|Event likely associated with the observed anomaly|
 |--------|---------|--------|
