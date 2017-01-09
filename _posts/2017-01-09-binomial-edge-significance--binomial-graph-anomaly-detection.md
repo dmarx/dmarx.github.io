@@ -55,28 +55,29 @@ Let's hone in on the results from the last two years of data and compare the res
 
 |date|Anomaly Nexus (filtered)|Anomaly Nexus (unfiltered)|scan statistic (filtered)|scan statistic (unfiltered)|Normalized scan statistic (filtered)|Normalized scan statistic (unfiltered)|Does Anomaly Nexus Match?|
 |----||----||----||----:||----:||----:||----:||:----:|
-|2015/02|betterCallSaul|FeelsLikeTheFirstTime|796.9093|46823|0.15078701|0.1613362||
-|2015/03|projecteternity|dnbhl|332|36462|0.0628193|0.1256357||
-|2015/04|thebutton|thebutton|5285|290220|1|1|X|
-|2015/05|Boxing|UnitedColors|526.5|40516|0.09962157|0.1396044||
-|2015/06|fo4|freegold|689|89904|0.13036897|0.3097788||
-|2015/07|Blackout2015|Blackout2015|2386|193179|0.45146641|0.6656295|X|
-|2015/08|MensLib|MensLib|299|52802|0.05657521|0.1819378|X|
-|2015/09|apple|Amd|377.595|77305|0.07144655|0.2663669||
-|2015/10|baseball|Nexus6P|1602.5|100582.5|0.30321665|0.3465733||
-|2015/11|JessicaJones|GGFreeForAll|197|42558|0.03727531|0.1466405||
-|2015/12|MakingaMurderer|MakingaMurderer|627|90627|0.11863765|0.31227|X|
-|2016/01|stevenuniverse|cssfuckfest|668|65758|0.12639546|0.2265798||
-|2016/02|thewalkingdead|CapitalismVSocialism|1679|158323|0.31769158|0.5455275||
-|2016/03|Defenders|ZombieSurvivalRP|960|81655|0.18164617|0.2813555||
-|2016/04|sweden|AskBernieSupporters|1099.5|128069|0.20804163|0.4412825||
-|2016/05|Battlefield|Mr_Trump|1471|162830|0.27833491|0.5610571||
-|2016/06|uncensorednews|uncensorednews|2825|161728|0.53453169|0.55726|X|
-|2016/07|TheSilphRoad|Incels|1258|103127|0.23803217|0.3553408||
-|2016/08|olympics|AskThe_Donald|4377.5|161663|0.82828761|0.557036||
-|2016/09|southpark|CivilizationSim|1112|94475|0.21040681|0.3255289||
-|2016/10|westworld|NintendoSwitch|2494|132032|0.47190161|0.4549376||
-|2016/11|the_meltdown|shittyrainbow6|2931.6647|141939|0.55471423|0.4890738||
+|2015/02|betterCallSaul|FeelsLikeTheFirstTime|797|46823|15%|16%||
+|2015/03|projecteternity|dnbhl|332|36462|6%|13%||
+|2015/04|thebutton|thebutton|5285|290220|100%|100%|X|
+|2015/05|Boxing|UnitedColors|527|40516|10%|14%||
+|2015/06|fo4|freegold|689|89904|13%|31%||
+|2015/07|Blackout2015|Blackout2015|2386|193179|45%|67%|X|
+|2015/08|MensLib|MensLib|299|52802|6%|18%|X|
+|2015/09|apple|Amd|378|77305|7%|27%||
+|2015/10|baseball|Nexus6P|1603|100583|30%|35%||
+|2015/11|JessicaJones|GGFreeForAll|197|42558|4%|15%||
+|2015/12|MakingaMurderer|MakingaMurderer|627|90627|12%|31%|X|
+|2016/01|stevenuniverse|cssfuckfest|668|65758|13%|23%||
+|2016/02|thewalkingdead|CapitalismVSocialism|1679|158323|32%|55%||
+|2016/03|Defenders|ZombieSurvivalRP|960|81655|18%|28%||
+|2016/04|sweden|AskBernieSupporters|1100|128069|21%|44%||
+|2016/05|Battlefield|Mr_Trump|1471|162830|28%|56%||
+|2016/06|uncensorednews|uncensorednews|2825|161728|53%|56%|X|
+|2016/07|TheSilphRoad|Incels|1258|103127|24%|36%||
+|2016/08|olympics|AskThe_Donald|4378|161663|83%|56%||
+|2016/09|southpark|CivilizationSim|1112|94475|21%|33%||
+|2016/10|westworld|NintendoSwitch|2494|132032|47%|45%||
+|2016/11|the_meltdown|shittyrainbow6|2932|141939|55%|49%||
+
 
 Again, we can see that the two approaches achieved similar results, especially in many of the most tumultuous periods. There were, however, some important places where they disagree. The significance filtered approach seems to have had "better" hits:
 
