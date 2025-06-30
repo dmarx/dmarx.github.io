@@ -1,0 +1,2129 @@
+---
+File: _posts/2012-10-20-getting-pandas.md
+---
+---
+layout: post
+title: Getting Pandas
+excerpt: "A discussion of how I resolve some frustrations I'd previously encountered with python's pandas package"
+tags: [python, pandas, pylab, reddit]
+modified:
+comments: true
+---
+
+![](/images/getting_pandas/batman_panda.jpg)
+
+No, I didn't go to the store and buy a panda. In fact, the national zoo here in DC lost a panda fairly recently :(
+
+The title of this post is meant to contrast my last posts frustration: I'm starting to get the whole pandas thing.
+
+When I last played with my reddit data, I produced an interesting graphic that showed the reddit activity of DC area redditors. In my analysis, I treated the data as though it were descriptive of the redditors as individuals, as though it were an average of each individual's usage pattern, but really it was aggregate data. I'm interested in trying to characterize different “kinds” of redditors from their usage patterns, and hope to also build a classifier that can predict a user's timezone. The obvious next step in my analysis was to get more granular and work with the individual users. As I mentioned in my last post I'm challenging myself to do this analysis in python.
+
+My dataset resides in a SQLite database. I have extensive experience with SQL at work, where I basically live in an oracle database, but I'm lucky in that I can do most of my analysis directly in the database. I'm still getting the hang of how applications I program should interface with the database. So, like any noob, I started out by making a pretty stupid, obvious mistake. Let me show you what my code looked like when I started this analysis:
+
+{% highlight python %}
+"""
+NB: This code is for sample purposes only and represents
+what NOT to do. The better solution is posted directly below.
+
+Many of my posts describe good code in the context of bad code:
+if you're going to cut and paste from anything I post here, please
+make sure to read the whole post to make sure you aren't using the
+bad solution to your problem.
+"""
+import database as db
+from datamodel import *
+import sqlalchemy as sa
+
+s = db.Session()
+
+def get_users(min_comments=900):
+    usertuples = s.query(Comment.author) \
+    .group_by(Comment.author) \
+    .having(sa.func.count(Comment.comment_id)>min_comments) \
+    .all()
+    usernames = []
+    for u in usertuples:
+        usernames.append(u[0])
+    return usernames
+
+def get_comment_activity(username):
+    """
+    Gets comments from database, develops a "profile" for the user by
+    summarizing their % activity for each hour in a 24 horus clock.
+    Could make this more robust by summarizing each day separately
+    """
+    comments = s.query(Comment.created_utc)\
+            .filter(Comment.author == username)\
+            .all()
+    timestamps = []
+    for c in comments:
+        timestamps.append(c[0])
+    return timestamps
+
+def profile_user_hourly_activity(data):
+    """
+    Returns profile as a total count of activity.
+    Should ultimately normalize this by dividing by total user's activity
+    to get percentages. Will need to do that with numpy or some other
+    numeric library.
+    """
+    pivot = {}
+    for d in data:
+        timestamp = time.gmtime(d)
+        t = timestamp.tm_hour
+        pivot[t] = pivot.get(t,0) +1
+    return pivot
+
+users = get_users()
+profiles = {}
+times = []
+for user in users:
+    comments = get_comment_activity(user)
+    profiles[user] = profile_user_hourly_activity(comments)
+{% endhighlight %}
+
+I've simplified my code slightly for putting it up on this blog, but it used to contain some print statements inside the for loop at the bottom so I could see how long each iteration was taking. On average, it took about 2.2 seconds to process a single user. That means to process all 2651 users in my database, it would take about an hour. HOLY CRAP! Instead of fixing my problem, I decided to trim the dataset down to only those users for whom I had been able to download >900 comments (hence the min_comments parameter to get_users), reducing the dataset to 564 users. I actually ran the code and it took 21 minutes. Absolutely unacceptable. What's the problem?
+
+**I/O IS EXPENSIVE.**
+
+This is a problem I've made before in the past, and it always leads to significant performance gains if it can be eliminated. Like, code that once took 18 hours finished in about 4 minutes running on the same data set because I minimized the I/O (in that instance it was file read/writes).
+
+Instead of a separate database call for each user, let's hit the database once and slice the data as necessary from inside python.
+
+{% highlight python %}
+import database as db
+import pandas as pd
+
+s = db.Session()
+data = s.query(Comment.author, Comment.comment_id, Comment.created_utc).all()
+
+author        = [a for a,b,c in data]
+comment_id    = [b for a,b,c in data]
+timestamps    = [time.gmtime(c) for a,b,c in data]
+created_dates = [dt.datetime(t.tm_year, t.tm_mon, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec) for t in timestamps]
+
+df = pd.DataFrame({'author':author, 'comment_id':comment_id}, index=created_dates)
+{% endhighlight %}
+
+Much better. Also, putting it in the data frame object makes the rest of the analysis much much easier. Well... easier in terms of how fast the code runs and how little I need to write. I'm still learning pandas so doing it the "hard" way actually produces results faster for me, but I'm not on a deadline of anything so let's do this the right way.
+
+{% highlight python %}
+grouped = df.groupby(['author', lambda x: x.hour]).agg(len)
+grid    = grouped.unstack()
+{% endhighlight %}
+
+Holy shit that was easy.Since that happened so fast you might have missed it, those two lines of code are summarizing my data set by user to give a profile of their sum activity by hour. Did I mention this code takes about a minute to run (compare this with the code at the top of the article that would have taken a full HOUR).
+
+Here's how to plot this and what we get:
+
+{% highlight python %}
+import pylab as pl
+pl.plot(grid.T)
+pl.show()
+{% endhighlight %}
+
+![](/images/getting_pandas/all_users-unnormalized2.png)
+
+NB: Times here are in UTC (EST=UTC-5). Also, although I didn't go to the trouble of labeling axis, you can tell pretty quickly: the x-axis is hour, the y-axis is count.
+
+You can see that there's a lot of diversity in these users, but there's a very clear pattern here which is clearly consistent with the graphic I produced in my first pass at this. Let's take a look at that pattern in a broad way by taking the average of the elements composing this graph:
+
+{% highlight python %}
+pl.plot(grid.mean())
+pl.show()
+{% endhighlight %}
+
+![](/images/getting_pandas/mean_activity_over_all_dcusers.png)
+
+Man...pandas makes everything so...simple! And it integrates crazy nice with matplotlib (imported here as part of pylab).
+
+As I mentioned at the top, I suspect that there are distinct user categories that I can identify from how people use the site, and my immediate hypothesis is that I can find these categories based on the times people use the site (e.g. people who browse predominantly at work, people who browse predominantly after dinner, people who browse predominantly on the weekends, etc.). I was having a ton of trouble installing scikit-learn so I cheated and did some analysis in R. Here's what PCA of this data looks like (just to add more pretty pictures):
+
+![](/images/getting_pandas/pca-isolated_ithink.jpeg)
+
+Obviously the clusters just aren't there yet. Maybe there are two: the horizontal ellipse on the left and the vertical ellipse on the right (maybe), but more likely instead of distinct user types, it looks like there may be a predominant user type (the right blob), and then a fully populated spectrum of other usage styles. I can't remember if I generated this using the full data set, or just the users for whom I had >900 data points, so I could be wrong. I guess I'm going to need some more features.
+
+Anyway, enough blogging. I've got a mid term this week and am taking a rare night off from my books to play around with this data, and instead of coding I've been writing up analyses I've already done. Time to play!
+
+
+---
+File: _posts/2012-11-28-word-ladder-solver.md
+---
+---
+layout: post
+title: Weekend Project - Word Ladder Solver
+excerpt: "Building a robust tool to efficiently play a simple word game"
+tags: [network graph, text processing, python, networkx]
+modified:
+comments: true
+---
+
+<< I plan to add a few graphics, code snippets, and trim the code posted at the bottom, but I just haven't gotten around to it. I wrote the bulk of this about two weeks ago now and just haven't gotten around to finishing it. I'll update this post when I can, but for now, I'm just going to publish since I have no time to clean it up. I'll remove this message when I've made the post all nice and pretty (probably never).>>
+
+The other day I learned about a game Lewis Carol invented where you make ["word ladders"](http://en.wikipedia.org/wiki/Word_ladder) or "word bridges." The idea is you pick two words, and try to get from one to the other by using a chain of valid words where each word in the chain differs from the previous word by a single letter. Here's an example:
+
+||
+|:-----|
+|WORD|
+|CORD|
+|CORED|
+|CORDED|
+|CODDED|
+|RODDED|
+|RIDDED|
+|RIDGED|
+|RIDGE|
+|BRIDGE|
+{: style="width: 10%; margin: auto;"}
+<br>
+
+    
+I immediately thought making a word bridge generator would be a fun little challenge to program, and it turned out to be a slightly more difficult problem than I'd anticipated. Let's start by formalizing this game and we'll work our way up to what specifically makes this challenging.
+
+### Word Similarity
+
+For our purposes, two words are similar if you can get from one word to another by "changing a letter." This change can be an insertion (CORD->CORED), a deletion (RIDGED->RIDGE), or a substitution (WORD->CORD). This is a pretty useful similarity metric and is something of a go-to tool for a lot of natural language processing tasks: it's called ["edit distance"](http://en.wikipedia.org/wiki/Edit_distance) or "levenshtein distance" where the "distance" is the minimum number of edits to transform one word into the other, so if edit_distance(w1, w2) = 0, then w1 and w2 are the identical. Note, it's the MINIMUM number of edits. Edit distance calculation does not need to be edits-via-valid-words like I demonstrated above, so although I was able to transform WORD into BRIDGE with 9 edits, the edit distance between these two words is actually 5:
+
+||||||
+|:----|:---:|:----|
+|W**O**RD|||
+|WRD|--|del|
+|**B**RD|--|sub|
+|BR**I**D|--|ins|
+|BRID**G**|--|ins|
+|BRIDG**E**|--|ins|
+{: style="width: 10%; margin: auto;"}
+<br>
+
+
+The edit distance algorithm is a pretty neat little implementation of dynamic programming, but luckily I don't need to build it up from scratch: python's natural language toolkit has it built-in (be careful, it's case sensitive):
+
+{% highlight python %}
+from nltk import edit_distance
+edit_distance('WORD','BRIDGE')
+edit_distance('WORD','bridge')
+{% endhighlight %}
+
+
+### GRAPH TRAVERSAL
+
+In the context of this problem, we can think of our word list (i.e. the English dictionary) as an [undirected graph](http://en.wikipedia.org/wiki/Undirected_graph#Undirected_graph) where the nodes are words and similar words are connected. Using this formulation of the problem, a word bridge is a path between two nodes. There are several path finding algorithms available to us, but I'm only going to talk about two of the more basic ones: [depth-first search](http://en.wikipedia.org/wiki/Depth_first_search) (DFS) and [breadth-first search](https://en.wikipedia.org/wiki/Breadth-first_search) (BFS).
+
+#### Depth-First Search
+
+<figure>
+    <img src="https://upload.wikimedia.org/wikipedia/commons/7/7f/Depth-First-Search.gif">
+</figure>
+
+DFS essentially goes as far along a particular branch as it can from a start node until it reaches a "terminal node" (can't go any further) or a "cycle" (found itself back where it had already explored) and then it backtracks, doing the same thing along all the unexplored paths. If you think of a tree climber trying to map out a tree, it would be like them climbing up the trunk until they reached a fork, and then following that branch in the same direction all the way out until it reached a leaf, then working backwards to the last fork it passed, and then going forwards again until it hit a leaf, and so on.
+
+#### Breadth-First Search
+
+<figure>
+    <img src="https://upload.wikimedia.org/wikipedia/commons/5/5d/Breadth-First-Search-Algorithm.gif">
+</figure>
+
+On the other hand, BFS looks at the graph in terms of layers. BFS first gets all the child nodes of the starting node, so now the furthest nodes are 1 edge from the start. Then it does the same thing for those children, so the furthest nodes in our searched subgraph are 2 edges away, and so on. A good visualization for this projection is a really contagious virus spreading through a population. First, people in immediate contact with patient zero get sick. Then everyone those people are in immediate contact with get sick, and so on. Replace "person" with "node" and "sick" with searched, and that's BFS.
+
+If we use DFS to traverse this graph, will we find the word bridge (assuming one exists, since a path does not exist between all nodes in our graph) eventually, but a) there's no guarantee it will be the shortest path, and b) how long it takes really depends on the order of nodes in our graph, which is sort of silly. BFS will necessarily find the shortest path for us: given that we've searched to a depth of N edges and not found a path, we know there cannot be word bridge of length N from our start word to our target word. Therefore, if we reach our target word on the N+1 iteration of BFS, we know that the shortest path is N+1 edits. It's possible that there are multiple "shortest paths," but we'll stop when we reach the first one we see.
+
+### THE BOTTLENECK
+
+Here's a not-so-obvious question: what part of this problem is going to cause us the biggest problems? Edit distance? The graph search? The real problem here is scale, the sheer size of the word list. Once we have everything set up, traversing the graph will be fairly easy, but building up the network will take some time.
+
+To find a path between two arbitrary words, we need a reasonably robust dictionary. The one I had on hand for this project was 83,667 words. We need to convert this dictionary into a network. Conceptually, we do this with a [similarity matrix](http://en.wikipedia.org/wiki/Similarity_matrix).  We take all the words in the dictionary and put all of them on each axis. For each cell in the matrix, we populate the value with the edit distance between the two words that correspond with that cell. Since we're only concerned with entries that had edit distance "1," we can set every other value in the matrix to zero. This reduces our similarity matrix to an [adjacency matrix](http://en.wikipedia.org/wiki/Adjacency_matrix), describing which nodes in the graph share an edge.
+
+<figure>
+    <img src="http://www.bytehood.com/wp-content/uploads/2012/01/adjacency_matrix.gif">
+    <figcaption><a href="http://www.bytehood.com/graph-algorithms-part-i/258/" title="Adjacency Matrix of an undirected graph. (Image via bytehood.com)">Adjacency Matrix of an undirected graph. (Image via bytehood.com)</a></figcaption>
+</figure>
+    
+
+Obviously, implementing this in an array structure would be wildly inefficient. Such a matrix would need to be 83,667 x 83,667, or 7,000,166,889 cells, and presumably most of them will be 0's. If we allocate a byte to each cell in the array, this would take up 7 GB in memory. In actuality, elements of a list are allocated 4 bytes each with additional 36 bytes allocated for the list itself.
+
+{% highlight python %}
+>>>import sys
+>>>sys.getsizeof([])
+36
+>>>sys.getsizeof([1])
+40
+>>>sys.getsizeof([1,2])
+44
+{% endhighlight %}
+
+Therefore, if our array is implemented as a list of lists (there are other options, such as a pandas dataframe or a numpy array, but this is the naive solution), the array would take up:
+
+\\[36 * (83,667+1) + 4 * 83,667^2 = 28,003,679,604 \text{  bytes} = 28 \text{  GB}\\]
+
+I certainly don't have 28 GB of RAM. We're going to need a "sparse" data structure instead, one where we get to keep the ones but can ignore the zeros. The simple solution here in python is a dictionary (which is basically just a [hash table](http://en.wikipedia.org/wiki/Hash_table)). For each word in our word list, find all similar words. In our python dictionary, the key is the searched word and the collection of matches will be our value (as a list, set, tuple...whatever).
+
+{% highlight python %}
+# The adjacency matrix for the graph above converted into a sparser
+# dictionary representation
+## MATRIX FORM: 6 X 6 = 36 Elements
+## SPARSE FORM: 18 elements
+{'A':['B','C','D','E']
+,'B':['A','D','E']
+,'C':['A','F']
+,'D':['A','B','F']
+,'E':['A','B','F']
+,'F':['C','D','E']
+}
+{% endhighlight %}
+
+
+### HEURISTICS
+
+We're not quite there yet. For each word, we need to look over the entire dictionary. This means our code scales with $$n^2$$ (where $$n$$ is the number of words in our wordlist), which sucks. Even without that knowledge, you can try the code out with this naive search and you'll see, it will search like 20-100 words a minute. We have 83,667 words of varying size to get through before we've processed the graph we need for this problem, so we've got to come up with some tricks to make this faster.
+
+One thing we can do is try to limit the number of words we run `edit_distance()` on. This function is reasonably fast, but it's not as fast as a letter-by-letter comparison because it needs to build a matrix and do a bunch of calculations. For two words to have edit distance = 1, they can only differ by one letter. So we can compare the two letter prefix of our search word against every word in the dictionary and skip all the words whose prefixes differ by two letters. BAM! Way faster. But on my computer, this code will still take way too long to run. So let's do the sae thing looking at suffixes. Even faster! I can't remember, but I think at this point the estimated total run time for my code was 4 hours. Tolerable, but I'm impatient.
+
+The problem is that although we no longer need to look at every letter of every word during a single pass, we still need to look at every word in the dictionary. But we can use the prefix/suffix heurstic we just came up with to significantly reduce the size of the seach space during any given pass though.
+
+### DIVIDE AND CONQUER
+
+<figure>
+    <img src="https://i0.wp.com/upload.wikimedia.org/wikipedia/commons/5/54/Sorting_bubblesort_anim.gif">
+    <figcaption>
+        <a href="https://en.wikipedia.org/wiki/Bubble_sort" title="Bubble sort of an unordered list">Bubble sort of an unordered list</a>
+    </figcaption>
+</figure>
+
+The classic [divide and conquer algorithm](https://en.wikipedia.org/wiki/Divide_and_conquer_algorithms) is binary search. Consider a sorted list of numbers and some random number within the range of this list. You want to figure out where this number goes. The naive solution is called [bubble sort](https://en.wikipedia.org/wiki/Bubble_sort): start at the top of the list, compare your number against that number, if yours is bigger, move to the next item. Do this until you find your number's spot in the order. At worst, you have to look through every number in the list. For any given problem, bubble sort is almost always the wrong algorithm.
+
+<figure>
+    <img src="https://upload.wikimedia.org/wikipedia/commons/9/92/Binary_search_tree_search_4.svg">
+    <figcaption>
+        <a href="https://en.wikipedia.org/wiki/Binary_search_algorithm" title="Binary Search">Binary Search</a>
+    </figcaption>
+</figure>
+
+The idea behind binary search is because we know the list is already ordered, we can throw away half the list each time. Let's say the list you're given is 100 numbers. Jump to the middle and compare. Say your number is smaller: we don't need to consider the top 50 numbers at all now. Now jump to the 25th number. Bigger or smaller? Throw away the other 12. And so on. In a list of 100 numbers, binary search will find the position of your random number in at most 7 steps ($$log_2(100)$$). That's quite an improvement from bubble sort's 100 steps.
+
+### OVERLAPPING SUBPROBLEMS
+
+Binary search isn't really applicable to our problem, but we can still discount a signficant amount of the search space if we appropriately pre-process our word list. As we discovered above, we can divide the word list into 3 groups relative to our target word: both two-letter affixes match, prefix matches and/or suffix matches, or neither affix matches. There are a limited number of prefixes and suffixes in our word list, so if we're searching a word that has the same affix we've already searched, we're unnecessarily repeating work. This is what's known as an [overlapping subproblem](http://en.wikipedia.org/wiki/Overlapping_subproblems), and wherever you can identify one you can make your code faster. Oftentimes a lot faster.
+
+We're going to handle this affix problem by grouping the words by prefix and suffix. In other words, we're going to build two search indexes: an index on prefix and an index on suffix. I did this using a dictionary where the affix is the key and the matching words are the values.
+
+{% highlight python %}
+def build_index(words, n_letters=2, left=True, verbose=True):
+    n=n_letters
+    res={}
+    for w in words:
+        if left:
+            ix = w[:n]
+        else:
+            ix = w[(-1)*n:]
+        d = res.get(ix, [])
+        d.append(w)
+        res[ix] = d
+    return res
+
+>>> build_index(words)
+
+{'AA':
+['AA',
+ 'AAH',
+ 'AAHED',
+ 'AAHING',
+ 'AAHS',
+ 'AAL',
+ 'AALII',
+ 'AALIIS',
+ 'AALS',
+ 'AARDVARK',
+ 'AARDWOLF',
+ 'AARGH',
+ 'AARRGH',
+ 'AARRGHH',
+ 'AAS',
+ 'AASVOGEL']
+,'AB':
+['AB',
+ 'ABA',
+ 'ABACA',
+ 'ABACAS',
+ 'ABACI',
+ 'ABACK',
+ 'ABACUS',
+ 'ABACUSES',
+...
+ 'ZYMOSES',
+ 'ZYMOSIS',
+ 'ZYMOTIC',
+ 'ZYMURGY',
+ 'ZYZZYVA',
+ 'ZYZZYVAS']
+,'ZZ':
+['ZZZ']}
+{% endhighlight %}
+
+This significantly speeds up our code, but if you watch the code run, it seems to speed up and slow down in bursts. This isn't because your RAM is wonky. This is because the elements in our indexes aren't evenly distributed. Specifically, two-letter prefixes are pretty evenly distributed, but two letter-suffixes are not.
+
+<figure class="half">
+    <a href="/images/word_ladder/ixl2_hist.png"><img src="/images/word_ladder/ixl2_hist.png"></a>
+    <a href="/images/word_ladder/ixr2_hist.png"><img src="/images/word_ladder/ixr2_hist.png"></a>
+    <figcaption>Histograms of the distributions of two-letter prefixes and suffixes, respectively.</figcaption>
+</figure>
+<br>
+
+To remedy this we're going to use a three-letter index. An unfortunate result of my index implementation is that words that are smaller than the index size (here two letter words) don't get considered when looking up words of size greater than or equal to the index. So although "AH" and "AAH" are similar, they're contained in separate indexes with no overlap, so when I search for words similar to "AA" I'll get "AT" but not "AAH", and similarly when I look for words similar to "AAH" I'll get "AAHS" but not "AA" or "AH." This isn't pefect, but I stronglly suspect the effect on the final product is negligible. I could just use a separate index size for the two prefixes, but this was simpler to code and it only just occured to me I could use a two-letter index on the left and a three-letter index on the right. So sue me. I regret nothing. The three letter index is faster anyway.
+
+    ## Most Common suffixes: two letters
+    # ES     6810
+    # ED     6792
+    # ER     5296
+    # NG     4222
+    # RS     3480
+    # TS     2332
+    ## Most Common suffixes:three letters
+    # ING    4062
+    # ERS    2743
+    # IER    1142
+    # EST    1035
+    # TED    1014
+    # IES     985
+    #   NB: The top two three-letter suffixes combined comprise about
+    #   the same amount of the wordlist as the top two most popular
+    #   two-letter suffixes separately, and the rest of the suffixes
+    #   are pretty uniformly distributed.
+
+If you look at the X axis of the histograms below for the three letter indices you'll notice that two letter words are segregated into their own buckets. If we made similar histograms for indices of four or five letters, these buckets would manifest as an unusual density on the far left of the graph.
+
+<figure class="half">
+    <a href="/images/word_ladder/ixl2_hist.png"><img src="/images/word_ladder/ixl3_hist.png"></a>
+    <a href="/images/word_ladder/ixr2_hist.png"><img src="/images/word_ladder/ixr3_hist.png"></a>
+    <figcaption>Histograms of the distributions of three-letter prefixes and suffixes, respectively.</figcaption>
+</figure>
+<br>
+
+ 
+
+With our indexes in place, we can now generate our similarity network in a reasonable amount of time: about 90 minutes on my computer.
+
+{% highlight python %}
+def build_wordnet(wordlist, max_dist=1, index_size=None):
+    """
+    Returns a word similarity network (as a dict) where similarity is
+    measured as edit_distance(word1,word2) <= max_dist. This implementation doesn't properly account for words smaller than the index size. index_size defaults to max_dist+1, but you should check the distribution of prefixes/affixes in your wordlist to judge. In an 80K dictionary, I found a 3 letter index to be suitable, although this did result in the isolation of two letter words from the major component(s) of the network. """ if index_size is None: index_size = max_dist + 1 if verbose: print "Building right index..." R_ix = build_index(wordlist, n_letters=index_size, left=False) if verbose: print "Building left index..." L_ix = build_index(wordlist, n_letters=index_size, left=True) def check_index(j, affix, index, left=True): right = not left for k in index[affix]: if abs(len(j)-len(k))>max_dist:
+                continue
+            if right and edit_distance(j[-1*index_size:], k[-1*index_size:]) > max_dist:
+                continue
+            if left and edit_distance(j[:index_size], k[:index_size]) > max_dist:
+                continue
+            if j == k:
+                continue
+            if edit_distance(j,k) <= max_dist:
+                similarity_network[j].update([k])
+
+    similarity_network = {}
+    n=0
+    start = time.time()
+    now = 0
+    last = 0
+    for j in wordlist:
+        similarity_network[j]=set()
+        prefix = j[:index_size]
+        suffix = j[-1*index_size:]
+        check_index(j,suffix, R_ix, left=False)
+        check_index(j,prefix, L_ix, left=True)
+
+        if verbose:
+            n+=1
+            now = int(time.time() - start)/60
+            if now%5 == 0 and now == last+1:
+                print n, int(time.time() - start)/60
+            last = now
+    return similarity_network
+{% endhighlight %}
+
+At this point you should really think about saving your result so you don't have to wait 90 minutes every time you want to play with this tool we're building (i.e. we should only ever have to run these calculations once). I recommend pickling the dictionary to a file.
+
+{% highlight python %}
+import cPickle
+
+datafile = 'similarity_matrix.dat'
+
+f=open(datafile,'wb')
+p = cPickle.Pickler(f)
+g = build_wordnet(words)
+p.dump(g)
+f.close()
+{% endhighlight %}
+
+### NETWORKS
+
+Now that we've got the structure in place, we're ready to find some word bridges! When I first started this project, I tweaked a recipe I found online for my BFS function. It gave me results, but it was messy so I'll spare you my code. Because we're working with a graph, we can take advantage of special graph libraries. There are several options in python, one of which is igraph which I've played with a little in R and it's fine. After some googling around, I got the impression that the preference for python is generally the networkx library, so I decided to go with that.
+
+All we have left to do is convert our graph into a networkx.Graph object, and call the networkx path search algorithm.
+
+{% highlight python %}
+import networkx as nx
+net = nx.Graph()
+net.add_nodes_from(words)
+for k,v in g.iteritems():
+    for v_i in v:
+        net.add_edge(k,vi)
+
+w1 = raw_input("Start Word: ")
+w2 = raw_input("End Word:   ")
+nx.shortest_path(g, w1, w2)   # BAM! Don't need to reinvent the motherfucking wheel.
+{% endhighlight %}
+
+Really, we could have just used this data structure from the start when we were building the network up, but the dictionary worked just fine, the conversion step is still fast, I strongly suspect the native dict pickles to a smaller file than an nx.Graph would (feel free to prove it to yourself), and it was also a better pedagogical tool. Moreover, networkx graphs are dictionary-like, so the idea is still the same.
+
+### MAKING IT BETTER: OOP
+
+A feature we're lacking here is the ability to add missing words. After playing with this a little I've found that the word list I started with is short a few words, and doesn't contain any proper nouns (preventing me from using my own name in word bridges, for example). In the current implementation, to add a single word I would need to rebuild the whole network. I could build in a new function that adds a word to the graph, but I'd want to add this word into indexes too. This is getting complicated. But if I rebuild my tools using OOP principles, this feature will be pretty simple to add and I can reuse most of my existing code (by wrapping several things that currently appear in loops as methods). There are two kinds of entities we're going to want to represent: indexes, and word networks.
+
+{% highlight python %}
+
+class Index(object):
+    '''
+    Container class for wordbridge index, which gets stored as a dict
+    in the index attribute. affix
+    '''
+    def __init__(self, index_size=2, left=True):
+        self.index_size = index_size
+        self.left = left
+        self.index = {}
+        self._check_if_word_in_index = False
+    def in_index(self, word):
+        try:
+            for w in self.index[self.get_affix(word)]:
+                if w==word:
+                    return True
+        except:
+            pass
+        return False
+    def get_affix(self, word):
+        n = self.index_size
+        if self.left:
+            ix = word[:n]
+        else:
+            ix = word[(-1)*n:]
+        return ix
+    def add_word(self, word):
+        if self._check_if_word_in_index:
+            if in_index(word):
+                return
+        ix = self.get_affix(word)
+        d = self.index.get(ix, [])
+        d.append(word)
+        self.index[ix] = d
+        #self.words.append(word)
+    def add_words(self, words):
+        if type(words) in [type(()),type([]), type(set())]:
+            for w in words:
+                self.add_word(w)
+        elif type(words) == type(''):
+            self.add_word(words)
+        else:
+            # This should really be an error
+            return "Invalid input type"
+
+class Wordbridge(object):
+    def __init__(self, words=None, wordslist_filepath=None):
+        self.g = nx.Graph()
+        self.indexes = []
+        self.words = set()
+        if type(wordslist_filepath) == type(''):
+            self.seed_words_from_file(wordslist_filepath)
+        if words:
+            self.seed_words(words)
+    def graph_from_dict(self, net_dict):
+        for k,v in net_dict.iteritems():
+            for v_i in v:
+                self.g.add_edge(k,v_i)
+        self.words.update(net_dict.keys())
+    def update_indexes(self, word):
+        for ix in self.indexes:
+            ix.add_word(word)
+    def add_word(self, word):
+        w = word.upper()
+        try:
+            _ = self.g.node(w) # check if node is in graph
+        except:
+            self.update_indexes(w)
+            self.g.add_node(w)
+            self.check_indexes(w)
+    def add_index(self, index_size, left=True):
+        '''
+        Creates a new index, stored in Wordnet.indexes list"
+        '''
+        ix = Index(index_size, left)
+        ix.add_words(self.words)
+        self.indexes.append(ix)
+    def seed_words(self, words):
+        self.words.update(words)
+        self.g.add_nodes_from(self.words)
+    def seed_words_from_file(self,path):
+        with open(path) as f:
+            word_list = f.read().split()
+        self.seed_words(word_list)
+    def check_indexes(self, j, max_dist=1):
+        '''
+        Adds a word to the graph
+        '''
+        candidates = set()
+        n = max_dist+2
+        for ix in self.indexes:
+            right = not ix.left
+            left = ix.left
+            affix = ix.get_affix(j)
+            candidates.update(ix.index[affix])
+        for k in candidates:
+            if abs(len(j)-len(k))>max_dist:
+                continue
+            # this is sort of redundant because of the index design, but probably helps a tick.
+            if edit_distance(j[-1*n:], k[-1*n:]) + edit_distance(j[:n], k[:n]) > max_dist:
+                continue
+            if j == k:
+                continue
+            if edit_distance(j,k) <= max_dist:
+                #similarity_network[j].update([k])
+                self.g.add_edge(j,k)
+    def build_network(self, verbose=False):
+        n=0
+        start = time.time()
+        now = 0
+        last = 0
+        for j in wordlist:
+            check_indexes(j)
+            if verbose:
+                n+=1
+                now = int(time.time() - start)/60
+                if now%5 == 0 and now == last+1:
+                    print n, int(time.time() - start)/60
+                last = now
+    def wordbridge(self, w1, w2):
+        try:
+            return nx.shortest_path(self.g, w1.upper(), w2.upper())
+        except: # NetworkXNoPath error
+            return "No path between %s and %s" % (w1, w2)
+{% endhighlight %}
+
+
+---
+File: _posts/2012-12-05-idea-graphing-wikipedia.md
+---
+---
+layout: post
+title: Idea - Graphing Wikipedia
+excerpt: "Project idea"
+tags: [idea, network graph, wikipedia]
+modified:
+comments: true
+---
+
+I'm almost certain something like this has been done before. Anyway, here's the idea:
+
+1. Download the wikipedia database dump.
+2. Ingest article texts into a database
+3. Scrape wikipedia links out of the first paragraph of each article.
+4. Create a directed graph of articles where two articles share an edge if they are linked as described in (3). Treat article categories as node attributes.
+5. Investigate community structure of wikipedia articles, particularly which categories cluster together
+6. Extra challenge: Try to find articles that won't ["get you to philosophy"](http://en.wikipedia.org/wiki/Wikipedia:Getting_to_Philosophy)
+
+There are currently over 4M articles in the english wikipedia, so for this to be feasible I will probably need to invent some criterion for including articles in the project, probably minimum length, minimum age, or minimum edits. Alternatively, I might just focus on certain categories/subcategories.
+
+
+---
+File: _posts/2012-12-06-downloading-saved-reddit-images-praw.md
+---
+---
+layout: post
+title: Downloading images from saved reddit links
+excerpt: "A concise demonstration of the power of the python praw library"
+tags: [praw, python, reddit, webscraping]
+modified:
+comments: true
+---
+
+Reddit user aesptux posted to [/r/learnprogramming](http://www.reddit.com/r/learnprogramming/comments/14dojd/pythoncode_review_script_to_download_saved_images/) requesting a code review of [their script](https://github.com/aesptux/download-reddit-saved-images/blob/master/script.py) to download images from saved reddit links. This user made the same mistake I originally made and tried to work with the raw reddit JSON data. I hacked together a little script to show them how much more quickly they could accomplish their task using praw. It took almost no time at all, and the meat of the code is only about 20 lines. What a great API.
+
+Here’s my code: 
+
+{% gist 4225456 %}
+
+
+
+---
+File: _posts/2013-01-05-minesweeper-from-scratch.md
+---
+---
+layout: post
+title: Winter Break Project - Building Minesweeper from Scratch
+excerpt: "A simple project based tour of language features"
+tags: [minesweeper, python, tkinter, tk]
+modified:
+comments: true
+---
+
+Code: [https://github.com/dmarx/mines](https://github.com/dmarx/mines)
+
+I don't take a ton of vacation from my work, but luckily I don't really need to over the winter: my employer gives us christmas through new years off, which comes out to around 10 days vacation. I had planned to do some travelling, but instead tagged along with my girlfriend to do some family stuff for new years. Since I was in town for most of the break, I spent most of my time just chilling (which, frankly, was awesome) and coding.
+
+I've been programming for a few years now, both for fun and for work, but my programs usually are either scripts or backend (database) programs. I never got around to learning GUI programming, so I decided to use this opportunity to build a GUI program. I had recommended some minesweeper related challenges to a friend who's learning programming, so i had minesweeper on the brain. I ended up coding the main game out of boredom one day, and decided to slap a GUI on top of it. 
+
+Whenever I've seen GUI tutorials online, for simplicity sake they combine the main program code with the GUI code. I guess this makes sense for a quick tutorial, but my understanding is that this is pretty weak GUI programming. Generally, you want to separate the "model", "controller" and "view" components.
+
+For my application, my model was comprised of a board class which is a container for tile class objects I also defined. The controller was a "game" class which included functions like "click" and "flip_flag." I wanted the game component (the model and controller) to operate just fine in isolation from the GUI, so my Game class also has a play() method for playing minesweeper in the terminal. Having built the working game components, I could now slap a GUI on top in a separate "view" component.
+
+The most common GUI toolkits for python are wx, qt and tk. Tk is built into python as Tkinter, has a repuation for being simple to use, has plenty of documentation, and has the added benefit of taking advantage of the native OS's aesthetics, so I decided to go with Tkinter.
+
+Now, although there are lots of Tkinter tutorials, there doesn't seem to be a ton of consistency in how people use Tkinter. In general, the main GUI is defined as a class called "App." But sometimes the App class inherits from the Tk class, and sometimes it inherits from the Frame class. I started using an example that had my App inheriting from Frame, and this worked fine. I later wanted to implement a feature where the buttons would be hidden when the game was paused, and I found that this required a lot of changes if I kept it inheriting from the Frame class. I changed my app to inherit from the Tk class and it was a lot easier to add that feature. I think that inheritance makes more sense intuitively as well.
+
+Anyway, as an exercise, I strongly recommend programming minesweeper. Next time I need to learn a new language, I plan to use programming minesweeper as a comprehensive exercise. To accomplish the task takes using several primitive types and functions, defining classes, using threads (for the timer), and of course the GUI.
+
+
+
+
+
+
+---
+File: _posts/2013-08-13-mining-crossvalidated.md
+---
+---
+layout: post
+title: The Best of The Best on CrossValidated
+excerpt: 'Using the CrossValidated data explorer to find interesting users and posts.'
+tags: [crossvalidated, stackexchange, data explorer, sql, t-sql]
+modified:
+comments: true
+---
+
+[CrossValidated](http://stats.stackexchange.com/) is the StackExchange Q&A site focused on statistics. I mainly participate on CV answering questions ([http://stats.stackexchange.com/users/8451/david-marx](http://stats.stackexchange.com/users/8451/david-marx)). One somewhat alternative use of SE sites that I like is to "stalk" interesting users. I started this practice on [StackOverflow](http://stackoverflow.com/) (the very popular programming QA site), where I'd occasionally stumble across very high reputation users answering topics with tags I was interested in, so I'd check their answer history to see what other interesting things they'd posted. This was interesting, but because users on SO have such varied skills, you never know what you're going to get: maybe I visited a users page because they were answering a Python question, but it turns out most of their activity is talking about some other technology I'm not interested in.
+
+On the other hand, because the scope of CV is so much narrower, an analogous investigation on CV almost always produces very interesting results (i.e. in general everyone on CV's background and interests intersect with my own at least a little). SE has a very interesting tool available called the [data explorer](http://data.stackexchange.com/), a T-SQL interface to their database. As I happen to be a database jockey for my day job, I decided to make my CV user investigation more efficient by leveraging this tool.
+
+[Here's a query I built that returns a list of CV users who have authored answers that scored >=25 points](http://data.stackexchange.com/stats/query/129374/cv-users-with-most-interesting-answers). The approach I chose satisfied me for several reasons:
+
+1. I'm not just interested in reputation. Repuatation is largely a function of activity on the site: if you answer a lot of question but never achieve a very high score, the shear volume of your answers will give you high reputation. Similarly, asking a lot of questions will boost your reputation, and I'm specifically interestd in people with good answers.
+2. I'm not just interested in the highest scoring responses on the site. I want reading material: theoretically, I would like to read the highest scoring answers on the site, but I'm lazy:: I'd like to be able to visit a users profile and have several interesting answers to read, not just one.
+
+In particular, to satisfy the second criterion, my query sorts users in a fashion that is not entirely obvious when glancing at the results: instead of sorting by the user's repuation or their answer reputation or their max answer score or the number of high scoring answers, I used a combiend index: the results are sorted by the highest answer score they achieved multiplied by the number of answers above the score threshhold (24). I like this approach for the following reasons:
+
+* People with lots of good answers should bubble up to the top.
+* As the number of good answers goes down, the max score that user has achieved becomes increasingly relevant.
+* Users with just one good answer should sink to the bottom unless their answer was really good.
+
+{% highlight sql %}
+SELECT MAX(score) max_score, 
+       count(p.id) good_answers,
+       (SELECT count(*) 
+        FROM posts p2
+        WHERE p2.posttypeid=2 
+          AND p2.owneruserid = u.id) total_answers,
+       u.reputation,
+       'site://users/' + CAST(u.Id AS nvarchar) + '?tab=answers&sort=votes|'
+         + u.displayname  cv_user, -- link to profile, will display as username
+       u.age, 
+       u.location, 
+       u.websiteurl,
+       lastaccessdate
+FROM   users u, posts p
+WHERE  u.id = p.owneruserid
+  AND  p.score >= 25
+  AND  p.posttypeid = 2   -- answers only
+  AND  p.parentid <> 1337 -- ignore jokes
+  AND  p.parentid <> 726  -- ignore quotes
+GROUP BY reputation, u.displayname, u.age, u.location, u.websiteurl, 
+       u.lastaccessdate, u.id
+ORDER BY max(score) * count(p.id) desc
+{% endhighlight %}      
+
+
+---
+File: _posts/2013-10-17-programming-a-reddit-bot-in-python.md
+---
+---
+layout: post
+title: Programming A Simple Reddit Bot (in Python)
+excerpt: "A tutorial via walking through the design of a simple bot."
+tags: [python, praw, reddit]
+modified:
+comments: true
+---
+
+Almost a year ago I built a built a reddit bot called [VideoLinkBot](http://www.reddit.com/user/videolinkbot) that has been running on an old half-broken laptop in my room ever since. VLB was a great exercise in agile development that I started to write a post about awhile ago but abandoned. The gist of it is that the bot only satisfied a small portion of my vision when it first went live, but I didn't want to delay "bringing my product to market." This was a good decision because due mainly to time constraints, it took quite some time for me to incorporate most of the features I originally planned for the bot, many of which were deprioritized in my development path in favor of things my "end users" (redditors) specifically requested.
+
+Courtesy of the [praw](https://praw.readthedocs.org/en/latest/) library, building a simple bot is really very easy. As an exercise, I wrote a clone of the now disabled "linkfixerbot" to illustrate a simple bot template to another redditor, since VLB was fairly complex. Instead of discussing VLB at length (I may do so at a later date) I'll describe a general strategy for programming a reddit bot via the LinkFixerBot example.
+
+### LinkFixerClone
+
+(Here's the [complete bot code](https://gist.github.com/dmarx/5550922))
+
+On reddit, it's not uncommon for a comment to include internal links to either a subreddit or a user's overview page. To simplify building these links because they're so common, reddit markdown interprets the syntax "/u/username" as a shortlink to a user's history page, and "/r/subredditname" as a shortlink to a subreddit. Sometimes users either don't realize that this markdown feature exists (less an issue now than when the feature was first rolled out) or they simply neglect to add the first forward slash and instead of proper markdown, they write something like "r/subredditname." LinkFixerBot was a bot that scanned reddit for these mistakes and responded with repaired corrections.
+
+We can break down the bot into three activities:
+
+1. A component that scans the reddit comments feed.
+
+2. A component that determines if a particular comment is a candidate for bot action.
+
+3. A component that performs the bot's signature activity in the form of a comment response.
+
+There are many types of reddit bots, but I think what I've outlined above describes the most common. Some other kinds of bots may be [moderator bots](https://github.com/Deimos/AutoModerator), or bots that mirror the contents of a specific subreddit.
+
+The LinkFixerBot code should largely speak for itself: the while loop scans the reddit comment stream for comments, passing each comment to the "check_condition" function that determines if the bot should do anything. If the bot's services are required, the results of pre-processing the comment accomplished by the check_condition function are passed into the bot_action function, which causes the bot to respond with a comment. Rinse and repeat.
+
+Some items worth note:
+
+* It's a good idea to maintain a short cache of comments the bot has already looked at to prevent duplicated work. LinkFixerClone uses a fixed-length deque so when new comments come in, they push the old comments out. The deque length is set to twice the number of comments the bot can call down from reddit at a time.
+* You're going to need to include exception handling. Some special cases to consider (that are probably less of a problem for most bots than for VLB):
+  * A comment or submission of interest has been deleted
+  * A comment or submission is sufficiently old that it has been archived
+  * Reddit is down (consider adding a progressively increasing "back-off" time until your next attempt).
+  * Your bot's username doesn't have enough karma to post comments as frequently as it wants to.
+
+This last case can actually be remedied, at least to some extent, by just using the account and accruing karma.
+
+The reddit API rules discuss the appropriate request rate, but this is actually not a concern for us because praw handles that.
+
+
+---
+File: _posts/2013-11-25-visual-explanation-of-pca.md
+---
+---
+layout: post
+title: What’s Really Going On In Principal Component Analysis (PCA)?
+excerpt: "Visual explanation of PCA"
+tags: [principal component analysis, pca, dimensionality reduction, linear algebra, r language]
+modified:
+comments: true
+---
+
+PCA seems to have gained sufficient popularity that many "I know just enough statistics to be really dangerous" types are using it. I have no real problem with this: it's a great technique that has a lot of applications, but on a fairly regular basis I stumble across questions about PCA on CrossValidated that would only be asked by someone who really doesn't understand at a fundamental level what PCA is doing. Often the situation is appropriate for PCA to be applied (usually dimensionality reduction), but questions are asked about how to use or interpret the output the indicate the person really doesn't know what's going on.
+
+[This article](http://www.cs.otago.ac.nz/cosc453/student_tutorials/principal_components.pdf) provides the best explanation of PCA I've come across, illustrating the linear algebra in a very intuitive geometrical context. I'll provide a condensed version of the geometric explanation below without getting into the linear algebra.
+ 	
+
+Consider a sample of 50 points generated from $$y=x + noise$$. The first principal component will lie along the line $$y=x$$ and the second component will lie along the line $$y=-x$$, as shown below.
+
+<figure>
+	<img src="http://i.stack.imgur.com/wHjgk.jpg">
+</figure>
+
+The aspect ratio messes it up a little, but take my word for it that the components are orthogonal. Applying PCA will rotate our data so the components become the $$x$$ and $$y$$ axes:
+
+<figure>
+	<img src="http://i.stack.imgur.com/vtyVh.jpg">
+</figure>
+
+The data before the transformation are circles, the data after are crosses. In this particular example, the data wasn't rotated so much as it was flipped across the line $$y=-2x$$, but we could have just as easily inverted the y-axis to make this truly a rotation without loss of generality [as described here](http://stats.stackexchange.com/a/30356/8451).
+
+The bulk of the variance, i.e. the information in the data, is spread along the first principal component (which is represented by the $$x$$-axis after we have transformed the data). There's a little variance along the second component (now the $$y$$-axis), but we can drop this component entirely without significant loss of information. So to collapse this from two dimensions into one, we let the projection of the data onto the first principal component completely describe our data.
+
+<figure>
+	<img src="http://i.stack.imgur.com/kD1BT.jpg">
+</figure>
+
+We can partially recover our original data by rotating (ok, projecting) it back onto the original axes.
+
+<figure>
+	<img src="http://i.stack.imgur.com/4zpO8.jpg">
+</figure>
+
+
+The dark blue points are the "recovered" data, whereas the empty points are the original data. As you can see, we have lost some of the information from the original data, specifically the variance in the direction of the second principal component. But for many purposes, this compressed description (using the projection along the first principal component) may suit our needs.
+
+Here's the code I used to generate this example in case you want to replicate it yourself. If you reduce the variance of the noise component on the second line, the amount of data lost by the PCA transformation will decrease as well because the data will converge onto the first principal component:
+
+{% highlight r %}
+set.seed(123)
+y2 = x + rnorm(n,0,.2)
+mydata = cbind(x,y2)
+m2 = colMeans(mydata)
+
+p2 = prcomp(mydata, center=F, scale=F)
+reduced2= cbind(p2$x[,1], rep(0, nrow(p2$x)))
+recovered = reduced2 %*% p2$rotation
+
+plot(mydata, xlim=c(-1.5,1.5), ylim=c(-1.5,1.5), main='Data with principal component vectors')
+arrows(x0=m2[1], y0=m2[2]
+       ,x1=m2[1]+abs(p2$rotation[1,1])
+           ,y1=m2[2]+abs(p2$rotation[2,1])
+       , col='red')
+arrows(x0=m2[1], y0=m2[2]
+       ,x1=m2[1]+p2$rotation[1,2]
+           ,y1=m2[2]+p2$rotation[2,2]
+       , col='blue')
+
+plot(mydata, xlim=c(-1.5,1.5), ylim=c(-1.5,1.5), main='Data after PCA transformation')
+points(p2$x, col='black', pch=3)
+    arrows(x0=m2[1], y0=m2[2]
+           ,x1=m2[1]+abs(p2$rotation[1,1])
+       ,y1=m2[2]+abs(p2$rotation[2,1])
+           , col='red')
+    arrows(x0=m2[1], y0=m2[2]
+           ,x1=m2[1]+p2$rotation[1,2]
+       ,y1=m2[2]+p2$rotation[2,2]
+           , col='blue')
+    arrows(x0=mean(p2$x[,1])
+      ,y0=0
+      ,x1=mean(p2$x[,1])
+          ,y1=1
+          ,col='blue'
+           )
+    arrows(x0=mean(p2$x[,1])
+       ,y0=0
+       ,x1=-1.5
+       ,y1=0
+       ,col='red'
+)
+lines(x=c(-1,1), y=c(2,-2), lty=2)
+
+plot(p2$x, xlim=c(-1.5,1.5), ylim=c(-1.5,1.5), main='PCA dimensionality reduction')
+    points(reduced2, pch=20, col="blue")
+    for(i in 1:n){
+      lines(rbind(reduced2[i,], p2$x[i,]), col='blue')
+}
+
+plot(mydata, xlim=c(-1.5,1.5), ylim=c(-1.5,1.5), main='Lossy data recovery after PCA transformation')
+arrows(x0=m2[1], y0=m2[2]
+       ,x1=m2[1]+abs(p2$rotation[1,1])
+           ,y1=m2[2]+abs(p2$rotation[2,1])
+       , col='red')
+arrows(x0=m2[1], y0=m2[2]
+       ,x1=m2[1]+p2$rotation[1,2]
+           ,y1=m2[2]+p2$rotation[2,2]
+       , col='blue')
+for(i in 1:n){
+  lines(rbind(recovered[i,], mydata[i,]), col='blue')
+}
+points(recovered, col='blue', pch=20)
+{% endhighlight %}
+
+The bulk of this post was scavenged from a [response I provided on CrossValidated](http://stats.stackexchange.com/a/76911/8451).
+
+
+---
+File: _posts/2013-12-09-installing-scientific-python-libraries-windows.md
+---
+---
+layout: post
+title: Installing scientific python libraries in windows
+excerpt: "Binaries for installing scientific python libraries"
+tags: [python, anaconda]
+modified:
+comments: true
+---
+
+I often have issues installing certain python libraries (such as scipy or opencv) in windows. One solution to this problem is to do it the hard ware and just work your way through the errors as they come, winding your way through a maze of StackOverflow posts and mucking around in the registry. An alternative is to install a scientific python distribution like the [Enthought](https://www.enthought.com/products/epd/) Python Distribution, Continuum Analytics' [Anaconda](https://store.continuum.io/cshop/anaconda/), or [Python(x,y)](http://code.google.com/p/pythonxy/). I've played around with Anaconda and Python(x,y) and they're ok. Anaconda at least is supposed to be a little bit faster than the vanilla python installation, but I haven't done any speed tests or anything.
+
+Tonight I was wrestling with opencv. Anaconda didn't have it in its package manager and I kept encountering roadblocks trying to install it in my generic windows installation (CPython). Luckily, I discovered [this website which lists unofficial binaries for installing a lot of troublesome libraries](http://www.lfd.uci.edu/~gohlke/pythonlibs/) in CPython for windows, both x64 and x32. The page is hosted by UCI professor Chris Gholke. If you see this Chris, you're awesome.
+
+Lifesaver.
+
+
+---
+File: _posts/2014-07-06-scraping-twitter-with-python-and-mongodb.md
+---
+---
+layout: post
+title: Scraping your twitter home timeline with python and mongodb
+excerpt: "Using the twitter API and NoSQL to construct a dataset of your friends tweets."
+tags: [text processing, natural language processing, nlp, python, mongo, mongodb, nosql, twython, twitter]
+modified:
+comments: true
+---
+
+### Background
+
+About a year and a half ago I was hanging out with two colleagues, John and Jane. John and I were discussing various new happenings we'd heard about recently. Jane was very impressed with how current we were and wondered how we did it. I described how I subscribe to several blogs and that suits me fine, but John insisted that we both needed to try Twitter.
+
+I buckled down and finally created a twitter account. I didn't really know who to follow, so picked a prominent local data scientist and let him "vet" users for me: I skimmed his "following" list and decided to also follow anyone who's description made them sound reasonably interesting (from a data science stand point). The problem with this method is that I ended up following a bunch of his random friends who don't actually talk about data science. Right now, there's just too much happening on me twitter feed to keep up. If I don't check it every now and then, I'll quickly amass hundreds of backlogged tweets, so I have strong motivation to "trim the fat" of my following list.
+
+###Setup
+
+To get started, I'm going to explain how to scrape your twitter homepage. But first things first, we're going to need a few things:
+
+####Twitter API wrapper
+
+There are several python twitter API wrappers available right now. I did some research back when I first started tinkering with twitter and landed on the Twython package. I don't remember what led me to it, but I think the main thing is that it has a strong community and so there's a lot of good documentation and tutorials describing how to use it.
+
+To install Twython, just use pip like you would for most anything else:
+
+<pre style="background-color:#efefef;">
+pip install twython
+</pre>
+    
+No surprises here.
+
+#### Twitter API authentication
+
+We're going to need to do two things to get our scraper working with twitter. First, we need to register a new app at [http://apps.twitter.com](http://apps.twitter.com). If your desired app name is taken, just add your username to make it unique. It's not mentioned anywhere on the page, but you can't have the '@' symbol in your app name (or at least, it can't be preceded by the '@' symbol).
+
+Next, register an access token for your account. It only needs to have read-only permissions, and keeping it this way ensures we won't do any real damage with our experiment.
+
+Finally, store the authentication information in a config file (I called mine "scraper.cfg") like so:
+
+<pre style="background-color:#efefef;">
+[credentials]
+app_key:XXXXXXXXXXXXXX
+app_secret:XXXXXXXXXXXXXX
+oath_token:XXXXXXXXXXXXXX
+oath_token_secret:XXXXXXXXXXXXXX
+</pre>
+
+ 
+#### MongoDB
+
+Finally, we're going to need to set up a repository to persist the content we're scraping. My MO is usually to just use SQLite and to maybe define the data model using SQLAlchemy's ORM (which is totally overkill but I still do it anyway for some reason). The thing here though is:
+
+1. There's a lot of information on tweets
+
+2. I'm not entirely sure which information I'm going to find important just yet
+
+3. The datamodel for a particular tweet is very flexible and certain fields may appear on one tweet but not another.
+
+I figured for this project, it would be unnecessarily complicated to do it the old fashioned way and, more importantly, I'd probably be constantly adding new fields to my datamodel as the project developed, rendering my older scrapes less valuable because they'd be missing data. So to capture all the data we might want, we're going to just drop the tweets in toto in a NoSQL document store. I chose mongo because I'd heard a lot about it and found it suited my needs perfectly and is very easy to use, although querying it uses a paradigm that I'm still getting used to (we'll get to that later).
+
+Download and install MongoDB from [http://docs.mongodb.org/manual/installation/](http://docs.mongodb.org/manual/installation/).
+I set the data directory to be on a different (larger) disk than my C drive, so I start mongo
+like this:
+
+<pre style="background-color:#efefef;">
+C:\mongodb\bin\mongod --dbpath E:\mongodata\db
+</pre>
+
+We will need to run this command to start a mongo listener before running our scraper. Alternatively, you could just drop a system call in the scraper to startup mongo, but you should check to make sure it's not running first. I found just spinning up mongo separately to be simple enough for my purposes.
+
+Since we've already got a config file started, let's add our database name and collection (NoSQL analog for a relational table) to the config file, so our full config file will look like:
+
+<pre style="background-color:#efefef;">
+[credentials]
+app_key:XXXXXXXXXXXXXX
+app_secret:XXXXXXXXXXXXXX
+oath_token:XXXXXXXXXXXXXX
+oath_token_secret:XXXXXXXXXXXXXX
+
+[database]
+name:twitter_test
+collection:home_timeline
+</pre>
+
+Take note: all we have to do to define the collection is give it a name. We don't need to describe the schema at all (which, as described earlier, is part of the reason I'm using mongo for this project).
+
+### Getting Started
+
+So we're all set up with twython and mongo: time to start talking to twitter.
+
+We start by calling in the relevant configuration values and spinning up a Twython instance:
+
+{% highlight python %}
+import ConfigParser
+from twython import Twython
+
+config = ConfigParser.ConfigParser()
+config.read('scraper.cfg')
+
+# spin up twitter api
+APP_KEY    = config.get('credentials','app_key')
+APP_SECRET = config.get('credentials','app_secret')
+OAUTH_TOKEN        = config.get('credentials','oath_token')
+OAUTH_TOKEN_SECRET = config.get('credentials','oath_token_secret')
+
+twitter = Twython(APP_KEY, APP_SECRET, OAUTH_TOKEN, OAUTH_TOKEN_SECRET)
+twitter.verify_credentials()
+{% endhighlight %}
+
+To get the most recent tweets from our timeline, we hit the "/statuses/home_timeline" API endpoint. We can get a maximum of 200 tweets per call to the endpoint, so let's do that. Also, I'm a little data greedy, so I'm also going to ask for "contributor details:"
+
+{% highlight python %}
+params = {'count':200, 'contributor_details':True}
+home = twitter.get_home_timeline(**params)
+{% endhighlight %}
+
+Now, if we want to do persistent scraping of our home feed, obviously we can't just wrap this call in a while loop: we need to make sure twitter knows what we've already seen so we only get the newest tweets. To do this, we will use the "since_id" parameter to set a limit on how far back in the timeline the tweets in our response will go.
+
+### Paging and Cursoring
+
+This is going to be a very brief overview of the motivation behind cursoring and how it works. For a more in depth explanation, check the twitter docs here: [https://dev.twitter.com/docs/working-with-timelines](https://dev.twitter.com/docs/working-with-timelines)
+
+Consider a situation in which, since the last call to the timeline, so many new tweets have been written that we can't get them all in a single call. Twitter has a "paging" option, but if we use this, it's possible that the tweets on the bottom of one page will overlap with the tweets on the top of the next page (if new tweets are still coming into the timeline). So instead of "paging" we'll use "cursoring:" in addition to giving twitter a limit for how far back we can go, we'll also give a limit for the most recent tweet in any particular call. We'll do this using a "max_id" parameter. The API will still return the tweet with this ID though, so we want to set the max_id value just lower than the last tweet we saw. If you're in a 64bit environment, you can do this by subtracting '1' from the id.
+
+Putting this all together, here's what our persistent scraper looks like so far:
+
+{% highlight python %}
+latest = None   # most recent id we've seen
+while True:
+    try:
+        newest = None # this is just a flag to let us know if we should update the value of "latest"
+        params = {'count':200, 'contributor_details':True, 'since_id':latest}
+        home = twitter.get_home_timeline(**params)        
+        if home:
+            while home:
+                store_tweets(home) # I'll define this function in a bit
+                
+                # Only update "latest" if we're inside the first pass through the inner while loop
+                if newest is None:
+                    newest = True
+                    latest = home[0]['id']
+                    
+                params['max_id'] = home[-1]['id'] - 1
+                home = twitter.get_home_timeline(**params)
+{% endhighlight %}
+
+### Rate limiting
+
+As with pretty much any web API, twitter doesn't take too kindly to people slamming their servers. You can read more about the [rate limits for different API endpoints here](https://dev.twitter.com/docs/rate-limiting/1.1). Here's what concerns us:
+
+* The rate limiting windows are 15 minutes long. Every 15 minutes, the window resets.  
+* We can make 15 calls to the statuses/home_timeline endpoint within a given window.  
+* If we exceed this threshold, our GET request to the API will return a 429 ("Too many requests") code that Twython will feed to us as a twython.TwythonRateLimitError exception  
+* Twitter provides an API endpoint to query the rate limiting status of your application at application/rate_limit_status.  
+* The application/rate_limit_status endpoint is itself rate limited to 180 requests per window.
+
+If we don't pass in any parameters, the `application/rate_limit_status` endpoint will return the rate limit statuses for every single API endpoint which is much more data than we need, so we'll limit the data we get back by constraining the response to "statuses" endpoints:
+
+{% highlight python %}
+status = twitter.get_application_rate_limit_status(resources = ['statuses'])
+{% endhighlight %}
+
+This returns a JSON response wihch we only want a particular set of values from, so let's select that bit out:
+
+{% highlight python %}
+status = twitter.get_application_rate_limit_status(resources = ['statuses'])
+home_status = status['resources']['statuses']['/statuses/home_timeline']        
+{% endhighlight %}
+
+Finally, we'll test how many API calls are remaining in the current window, and if we've run out set the application to sleep until the window resets, double check that we're ok, and then resume scraping. I've wrapped this procedure in a function to make it simple to perform this test:
+
+{% highlight python %}
+def handle_rate_limiting():
+    while True:
+        status = twitter.get_application_rate_limit_status(resources = ['statuses'])
+        home_status = status['resources']['statuses']['/statuses/home_timeline']        
+        if home_status['remaining'] == 0:                
+            wait = max(home_status['reset'] - time.time(), 0) + 1 # addding 1 second pad
+            time.sleep(wait)
+        else:
+            return
+{% endhighlight %}
+
+We're only testing one of the API endpoints we're hitting though: we're hitting the application/rate_limit_status endpoint as well, so we should include that in our test just to be safe although realistically, there's no reason to believe we'll ever hit the limitation for that endpoint.
+
+{% highlight python %}
+def handle_rate_limiting():
+    app_status = {'remaining':1} # prepopulating this to make the first 'if' check fail
+    while True:
+        if app_status['remaining'] > 0:
+            status = twitter.get_application_rate_limit_status(resources = ['statuses', 'application'])
+            app_status = status['resources']['application']['/application/rate_limit_status']        
+            home_status = status['resources']['statuses']['/statuses/home_timeline']        
+            if home_status['remaining'] == 0:                
+                wait = max(home_status['reset'] - time.time(), 0) + 1 # addding 1 second pad
+                time.sleep(wait)
+            else:
+                return
+        else :
+            wait = max(app_status['reset'] - time.time(), 0) + 10
+            time.sleep(wait)
+{% endhighlight %}
+
+Now that we have this, we can insert it into the while loop that performs the home timeline scraping function. While we're at it, we'll throw in some exception handling just in case this rate limiting function doesn't work the way it's supposed to.
+
+{% highlight python %}
+while True:
+    try:
+        newest = None
+        params = {'count':200, 'contributor_details':True, 'since_id':latest}
+        handle_rate_limiting()
+        home = twitter.get_home_timeline(**params)        
+        if home:
+            while home:
+                store_tweets(home)
+                
+                if newest is None:
+                    newest = True
+                    latest = home[0]['id']
+                    
+                params['max_id'] = home[-1]['id'] - 1
+                handle_rate_limiting()
+                home = twitter.get_home_timeline(**params)
+        else:            
+            time.sleep(60)
+    
+    except TwythonRateLimitError, e:
+        print "[Exception Raised] Rate limit exceeded"
+        reset = int(twitter.get_lastfunction_header('x-rate-limit-reset'))
+        wait = max(reset - time.time(), 0) + 10 # addding 10 second pad
+        time.sleep(wait)
+    except Exception, e:
+        print e
+        print "Non rate-limit exception encountered. Sleeping for 15 min before retrying"
+        time.sleep(60*15)
+{% endhighlight %}
+
+### Storing Tweets in Mongo
+
+First, we need to spin up the database/collection we defined in the config file.
+
+{% highlight python %}
+from pymongo import Connection
+
+DBNAME = config.get('database', 'name')
+COLLECTION = config.get('database', 'collection')
+conn = Connection()
+db = conn[DBNAME]
+tweets = db[COLLECTION]
+{% endhighlight %}
+
+I've been calling a placeholder function `store_tweets()` above, let's actually define it:
+
+{% highlight python %}
+def store_tweets(tweets_to_save, collection=tweets):
+    collection.insert(tweets_to_save)
+{% endhighlight %}
+
+Told you using mongo was easy! In fact, we could actually just replace every single call to `store_tweets(home)` with `tweets.insert(home)`. It's really that simple to use mongo.
+
+The reason I wrapped this in a separate function is because I actually want to process the tweets I'm downloading a little bit for my own purposes. A component of my project is going to involve calculating some simple statistics on tweets based on when they were authored, so before storing them I'm going to convert the time stamp on each tweet to a python datetime object. Mongo plays miraculously well with python, so we can actually store that datetime object without serializing it.
+
+{% highlight python %}
+import datetime
+
+def store_tweets(tweets_to_save, collection=tweets):
+    for tw in tweets_to_save:
+        tw['created_at'] = datetime.datetime.strptime(tw['created_at'], '%a %b %d %H:%M:%S +0000 %Y')
+    collection.insert(tweets_to_save)
+{% endhighlight %}
+
+### Picking up where we left off
+
+The first time we run this script, it will scrape from the newest tweet back as far in our timeline as it can (approximately 800 tweets back). Then it will monitor new tweets and drop them in the database. But this behavior is completely contingent on the persistence of the "latest" variable. If the script dies for any reason, we're in trouble: restarting the script will do a complete scrape on our timeline from scratch, going back as far as it can through historical tweets again. To manage this, we can query the "latest" variable from the database instead of just blindly setting it to "None" when we call the script:
+
+{% highlight python %}
+latest = None   # most recent id scraped
+try:
+    last_tweet = tweets.find(limit=1, sort=[('id',-1)])[0] # sort: 1 = ascending, -1 = descending
+    if last_tweet:
+        latest = last_tweet['id']
+except:
+    print "Error retrieving tweets. Database probably needs to be populated before it can be queried."
+{% endhighlight %}
+
+And we're done! The finished script looks like this:
+
+{% highlight python %}
+import ConfigParser
+import datetime
+from pymongo import Connection
+import time
+from twython import Twython, TwythonRateLimitError
+
+config = ConfigParser.ConfigParser()
+config.read('scraper.cfg')
+
+# spin up twitter api
+APP_KEY    = config.get('credentials','app_key')
+APP_SECRET = config.get('credentials','app_secret')
+OAUTH_TOKEN        = config.get('credentials','oath_token')
+OAUTH_TOKEN_SECRET = config.get('credentials','oath_token_secret')
+
+twitter = Twython(APP_KEY, APP_SECRET, OAUTH_TOKEN, OAUTH_TOKEN_SECRET)
+twitter.verify_credentials()
+
+# spin up database
+DBNAME = config.get('database', 'name')
+COLLECTION = config.get('database', 'collection')
+conn = Connection()
+db = conn[DBNAME]
+tweets = db[COLLECTION]
+
+def store_tweets(tweets_to_save, collection=tweets):
+    """
+    Simple wrapper to facilitate persisting tweets. Right now, the only
+    pre-processing accomplished is coercing 'created_at' attribute to datetime.
+    """
+    for tw in tweets_to_save:
+        tw['created_at'] = datetime.datetime.strptime(tw['created_at'], '%a %b %d %H:%M:%S +0000 %Y')
+    collection.insert(tweets_to_save)
+
+def handle_rate_limiting():
+    app_status = {'remaining':1} # prepopulating this to make the first 'if' check fail
+    while True:
+        wait = 0
+        if app_status['remaining'] > 0:
+            status = twitter.get_application_rate_limit_status(resources = ['statuses', 'application'])
+            app_status = status['resources']['application']['/application/rate_limit_status']
+            home_status = status['resources']['statuses']['/statuses/home_timeline']
+            if home_status['remaining'] == 0:
+                wait = max(home_status['reset'] - time.time(), 0) + 1 # addding 1 second pad
+                time.sleep(wait)
+            else:
+                return
+        else :
+            wait = max(app_status['reset'] - time.time(), 0) + 10
+            time.sleep(wait)
+
+latest = None   # most recent id scraped
+try:
+    last_tweet = tweets.find(limit=1, sort=[('id',-1)])[0] # sort: 1 = ascending, -1 = descending
+    if last_tweet:
+        latest = last_tweet['id']
+except:
+    print "Error retrieving tweets. Database probably needs to be populated before it can be queried."
+
+no_tweets_sleep = 1
+while True:
+    try:
+        newest = None # this is just a flag to let us know if we should update the "latest" value
+        params = {'count':200, 'contributor_details':True, 'since_id':latest}
+        handle_rate_limiting()
+        home = twitter.get_home_timeline(**params)
+        if home:
+            while home:
+                store_tweets(home)
+
+                # Only update "latest" if we're inside the first pass through the inner while loop
+                if newest is None:
+                    newest = True
+                    latest = home[0]['id']
+
+                params['max_id'] = home[-1]['id'] - 1
+                handle_rate_limiting()
+                home = twitter.get_home_timeline(**params)
+        else:
+            time.sleep(60*no_tweets_sleep)
+
+    except TwythonRateLimitError, e:
+        reset = int(twitter.get_lastfunction_header('x-rate-limit-reset'))
+        wait = max(reset - time.time(), 0) + 10 # addding 10 second pad
+        time.sleep(wait)
+    except Exception, e:
+        print e
+        print "Non rate-limit exception encountered. Sleeping for 15 min before retrying"
+        time.sleep(60*15)
+{% endhighlight %}
+
+
+---
+File: _posts/2014-08-04-Topological-Anomaly-Detection.md
+---
+---
+layout: post
+title: Topological Anomaly Detection (TAD)
+excerpt: 'Querying the "shape" of the data to perform unsupervised anomaly detection.'
+tags: [text processing, natural language processing, nlp, python]
+modified:
+comments: true
+---
+
+<figure>
+	<img src="/images/iris_outlier_graph.png">
+</figure>
+
+(tl;dr: [https://github.com/dmarx/Topological-Anomaly-Detection](https://github.com/dmarx/Topological-Anomaly-Detection))
+
+Recently I had the pleasure of attending a presentation by Dr. Bill Basener, one of the authors of this paper which describes an outlier analysis technique called Topological Anomaly Detection (TAD). Despite the intimidating name, the algorithm is extremely simple, both to understand and to implement.
+
+The technique is essentially a density based outlier detection algorithm that, instead of calculating local densities, constructs a graph of the data using nearest-neighbors. The algorithm is different from other kNN outlier detection algorithms in that instead of setting 'k' as a parameter, you instead set a maximal inter-observation distance (called the graph "resolution" by Gartley and Basener). If the distance between two points is less than the graph resolution, add an edge between those two observations to the graph. Once the full graph is constructed, determine which connected components comprise the "background" of the data by setting some threshold percentage of observations 'p': any components with fewer than 'p' observations is considered an anomalous component, and all the observations (nodes) in this component are outliers.
+
+As you probably gathered from my description, it's a pretty simple algorithm to implement. Let's walk through it step by step.
+
+First, we need to construct a distance matrix. SciPy has a great utility for this called pdist:
+
+{% highlight python %}
+from scipy.spatial.distance import pdist
+
+distance_matrix = pdist(X)
+{% endhighlight %}
+
+One thing that's nice about this is that it will work for either numpy arrays or pandas dataframes, as long as the observations are on the rows and the features are on the columns. The output of pdist is, by default, a "condensed" distance matrix, which is just the upper triangular matrix collapsed into a flat vector. This is nice because it takes up (just) less than half the memory, but it's slightly more cumbersome to work with than a straight up distance matrix.
+
+We're ultimately going to treat this distance matrix as an adjacency matrix, but before we do, we need to replace all entries in the distance matrix (ok, distance vector) that are larger than the graph resolution "r" with zeroes to remove those edges from the graph. I think it's a little silly to expect the user to come up with a discrete distance to use for the resolution, so we're going to give the user the option to provide a quantile instead as the 'rp' parameter below.
+
+It's tempting to just modify the distance matrix in place, but we're going to need it later to score outliers, so we're going to work with a copy instead.
+
+{% highlight python %}
+def trim_adjacency_matrix(adj, r=None, rq=.1):
+    if r is None:
+        # This is really just a lazy quantile function.
+        q = int(np.floor(len(adj)*rq))
+        print "q:", q
+        r = np.sort(adj)[q]
+    print "r:", r
+    adj2 = adj.copy()
+    adj2[adj>r] = 0 
+    return adj2, r
+{% endhighlight %}
+
+Tada! We've got our graph. If you don't work with graph data a lot you might not see it, but an adjacency matrix is just a way of encoding a graph. But, the adjacency matrix isn't enough: we want to mine the connected components from the graph. Thankfully, this is trivial with networkx.
+
+Now, networkx expects a square matrix if we're going to build a graph using an adjacency matrix, but we have a vector. We could convert this to a full matrix by calling scipy.spatial.distance.squareform, but this will take up double the space in memory and it's possible that a user is working with a large enough dataset that this will be a problem, so let's work around the condensed distance matrix.
+
+There's probably a better way to go about this--like a formula that converts (i, j) pairs into the appropriate indexes into this condensed matrix (vector)--but I was lazy when I wrote this up so instead of trying to find the right formula, I instead took some inspiration from a stackoverflow post discussing how to work with condensed distance matrices which led me to iterate through each vector index paired with its corresponding (i, j) index in the square matrix using enumerate(itertools.combinations). This essentially gives me an edgelist, permitting to build up the graph one edge at a time:
+
+{% highlight python %}
+from itertools import combinations
+import networkx as nx
+def construct_graph(edges, n):
+    g = nx.Graph()
+    for z, ij in enumerate(combinations(range(n),2)):
+        d = edges[z]
+        if d:
+            i,j = ij
+            g.add_edge(i,j, weight=d)
+    return g
+{% endhighlight %}
+
+Having constructed this graph structure, we can extract the connected components and score them as "background" or "anomaly" by counting the number of nodes in each component and comparing against the 'p' threshold. As a convenience for later, I'm also going to add "class" and "color" attributes to all the nodes in the graph.
+
+{% highlight python %}
+def flag_anomalies(g, min_pts_bgnd, node_colors={'anomalies':'r', 'background':'b'}):
+    res = {'anomalies':[],'background':[]}
+    for c in nx.connected_components(g):
+        if len(c) < min_pts_bgnd:
+            res['anomalies'].extend(c)
+        else:
+            res['background'].extend(c)
+    for type, array in res.iteritems():
+        for node_id in array:
+            g.node[node_id]['class'] = type
+            g.node[node_id]['color'] = node_colors[type]
+    return res, g
+{% endhighlight %}
+
+Last but not least, let's score those anomalies. For convenience, I'm going to wrap these scores in a pandas.Series, but this is the only place in our code we're using pandas so it would actually speed us up a bit not to do it this way (because then we can completely eliminate the pandas import):
+
+{% highlight python %}
+import pandas as pd
+def calculate_anomaly_scores(classed, adj, n):
+    scores = {}
+    for a in classed['anomalies']:
+        scores[a] = 0
+        for z, ij in enumerate(combinations(range(n),2)):
+            i,j = ij
+            if (i == a or j == a) and (
+                i in classed['background'] or
+                j in classed['background']):
+                d = adj[z]
+                if scores[a]:
+                    scores[a] = np.min([scores[a], d])
+                else:
+                    scores[a] = d
+    return pd.Series(scores)
+{% endhighlight %}
+
+Great! Now let's put all the pieces together to construct out outlier classification tool.
+
+{% highlight python %}
+def tad_classify(X, method='euclidean', r=None, rq=.1, p=.1, distances=None):
+    if not distances:
+        adj = pdist(X, method)
+    edges, r = trim_adjacency_matrix(adj, r, rq)
+    n = X.shape[0]
+    g = construct_graph(edges, n)
+    classed, g =  flag_anomalies(g, n*p)
+    scores = calculate_anomaly_scores(classed, adj, n)
+    return {'classed':classed, 'g':g, 'scores':scores, 'r':r, 'min_pts_bgnd':n*p, 'distances':adj}
+{% endhighlight %}
+
+Now that we've built this thing, let's try it out on the iris data. I'm going to visualize the result using a pairs plot (a "scatter_matrix" in pandas) which will allow us to see how the outliers relate to the rest of the data across all pairs of dimensions along which we can slice the data.
+
+{% highlight python %}
+import matplotlib.pyplot as plt
+from pandas.tools.plotting import scatter_matrix
+from sklearn import datasets
+
+iris = datasets.load_iris()
+df = pd.DataFrame(iris.data)
+res = tad_classify(df)
+
+df['anomaly']=0
+df.anomaly.ix[res['classed']['anomalies']] = 1
+scatter_matrix(df.ix[:,:4], c=df.anomaly, s=(25 + 50*df.anomaly), alpha=.8)
+plt.show()
+{% endhighlight %}
+
+<figure>
+	<img src="/images/iris_pairs_plot.png">
+</figure>
+
+The pairs plot it a great way to visualize the data, but if we had more than 4 dimensions this wouldn't be a viable option. Instead, let's reduce the dimensionality of the data using PCA just for visualization purposes. While we're at it, let's actually visualize how the observations are connected in the graph components to get a better idea of what the algorithm is doing.
+
+{% highlight python %}
+from sklearn.decomposition import PCA
+
+g = res['g']
+X_pca = PCA().fit_transform(df)
+pos = dict((i,(X_pca[i,0], X_pca[i,1])) for i in range(X_pca.shape[0]))
+colors = [node[1]['color'] for node in g.nodes(data=True)]
+labels = {}
+for node in g.nodes():
+    if node in res['classed']['anomalies']:
+        labels[node] = node
+    else:
+        labels[node] = ''
+nx.draw(g, pos=pos, node_color = colors, labels=labels)
+plt.show()
+{% endhighlight %}
+
+<figure>
+	<img src="/images/iris_outlier_graph.png">
+</figure>
+
+If we reduce the graph resolution, we get more observations classed as outliers. Here's what it looks like with rq=0.05 (the default--above--is 0.10):
+
+<figure>
+	<img src="/images/iris_outlier_graph_rq05.png">
+</figure>
+
+And here's rq=0.03:
+
+<figure>
+	<img src="/images/iris_outlier_graph_rq03.png">
+</figure>
+
+In case these images don't give you the intuition, reducing the graph resolution results in breaking up the graph into more and more components. Changing the 'p' parameter has a much less granular effect (as long as most of the observations are in a small number of components): changing 'p' will have basically no effect for small increments, but above a threshold we end up classifying large swathes of the graph as outliers.
+
+The images above have slightly different layouts because I ran PCA fresh each time. In retrospect, it would have looked better if I hadn't done that, but you get the idea. Maybe I'll fix that later.
+
+
+---
+File: _posts/2014-11-29-I-Before-E.md
+---
+---
+layout: post
+title: I Before E Except After C
+excerpt: "Mining text for spelling heuristics"
+tags: [text processing, natural language processing, nlp, python]
+modified:
+comments: true
+---
+
+A [recent post](http://mathjokes4mathyfolks.wordpress.com/2014/11/15/the-weird-i-before-e-rule/) on Patrick Vennebush blog Math Jokes for 4 Mathy Folks asserted that the rule of thumb "I before E except after C" was "total bullshit." This got me thinking: the "I before E except after C" rule (let's just call it the IEC rule) was almost certainly developed without any research at all, just based on the subjective experience of educators. It's not a horrible rule, but certainly we can more intelligently construct better rules of this kind (for lack of a better term, I'll be refering to these as "trigram spelling rules"). We have the technology, and I have nothing better to do with my night off :)
+
+### The long version
+
+You can find my full methodology and analysis in the following IPython notebook:
+
+[http://nbviewer.ipython.org/gist/dmarx/b6a095d2b161eccb18a3](http://nbviewer.ipython.org/gist/dmarx/b6a095d2b161eccb18a3)
+
+
+### The short version
+
+
+I used a larger word list than Patrick (233,621 words), but my analysis still corroborated his. I observed the following bigram and trigram frequencies for the IEC rule:
+
+|Bigram|Count|Trigram|Count|
+|---:|:----:|----:|:---:|
+|ie:|3950|cie:|256|
+|ei:|2607|cei:|156|
+
+
+I thought that perhaps although the IEC rule doesn't work when we look at the unique words in our vocabulary, perhaps it might hold true if we look at trigram and bigram frequencies across word usage in written text. Here are the frequencies for the IEC rule in the [Brown corpus](https://en.wikipedia.org/wiki/Brown_Corpus):
+
+|Bigram|Count|Trigram|Count|
+|---:|:----:|----:|:---:|
+|ie:|13275|cie:|1310|
+|ei:|5677|cei:|485|
+
+Nope, still no good.
+
+Instead of the IEC rule, here are some alternatives (taken from my vocabulary analysis, not the word usage analysis). For each rule of the form "A before B except after C" below, the bigram frequency percentage
+
+\\[ \frac{count(AB)}{count(AB)+count(BA)} \\] 
+
+is at least \\(\frac{1}{2}\\), and the laplace smoothed trigram frequency ratio 
+
+\\[ \frac{ (1+count(cba)) }{ (1+count(cab)) } \\]
+
+is maximized:
+
+**P** before **E** except after **C**
+
+|Bigram|Count|Trigram|Count|
+|---:|:----:|----:|:---:|
+|pe:|8052|cpe:|0|
+|ep:|5053|cep:|955|
+
+**E** before **U** except after **Q**
+
+|Bigram|Count|Trigram|Count|
+|---:|:----:|----:|:---:|
+|eu:|2620|qeu:|0|
+|ue:|1981|que:|949|
+
+**I** before **C** except after **I**
+
+|Bigram|Count|Trigram|Count|
+|---:|:----:|----:|:---:|
+|ic:|26140|iic:|1|
+|ci:|6561|ici:|1830|
+
+**T** before **E** except after **M**
+
+|Bigram|Count|Trigram|Count|
+|---:|:----:|----:|:---:|
+|te:|27265|mte:|2|
+|et:|11743|met:|2684|
+
+**R** before **D** except after **N**
+
+|Bigram|Count|Trigram|Count|
+|---:|:----:|----:|:---:|
+|rd:|3641|nrd:|0|
+|dr:|2738|ndr:|808|
+
+## Update
+
+After posting this article, there was some discussion that the optimal rules should focus on vowel placement and have a higher bigram ratio than the 1/2 threshold I used. Here are two "better" rules that satisfy these condiitons:
+
+**O** before **U** except after **Q**
+
+|Bigram|Count|Trigram|Count|
+|---:|:----:|----:|:---:|
+|ou:|12144|qou:|0|
+|uo:|671|quo:|122|
+
+**I** before **O** except after **J**
+
+|Bigram|Count|Trigram|Count|
+|---:|:----:|----:|:---:|
+|io:|15247|jio:|0|
+|oi:|4040|joi:|95|
+
+
+---
+File: _posts/2016-01-02-Map-of-Reddit.md
+---
+---
+layout: post
+title: Navigating the reddit graph
+excerpt: "Building a map of reddit"
+tags: [link analysis, networkx, gephi, python, network analysis]
+modified:
+comments: true
+---
+
+*(This is a project I've been sitting on for a while and have just never gotten around to writing a post on. I hope to fill this in with more details in the future, but for now I just want to get it on the blog)*
+
+Let's start off with the results. If you're interested in reading how I built this thing, keep reading after the jump.
+
+https://dmarx.github.io/SubredditMentionsGraph/network/
+
+<iframe 
+    src="https://dmarx.github.io/SubredditMentionsGraph/network/" 
+    marginwidth="0" 
+    marginheight="0"
+    width="900" 
+    height="1000"    
+    scrolling="no"
+    >
+</iframe>
+
+
+
+Back in February 2015, I was interested in the effect that promoting a subreddit could have on its traffic. I built a tool which you can play with at http://www.subredditmentions.com that lets you search for a subreddit and then generates a plot of the internet traffic for that subreddit (if the moderators made it public) overlaid with the times when people made comments outside of the searched subreddit linking to it. This was a really fun project with a lot of moving parts (praw scraper, sqlite datastore, flask backend, d3 + bootstrap frontend) and it deserves its own write up, but I'm not going to get into that yet
+
+As a consequence of building this tool, I accumulated a lot of data (basically) in the form of:
+
+    (timestamp, username, subreddit of comment, linked subredit)
+    
+Read this as: "on date/time <<timestamp>> user <<username>> made a comment in <<subreddit of comment>> that included a link to <<linked subreddit>>."
+    
+I tend to see graphs everywhere and, not surprisingly, saw one here:
+
+    (timestamp, username, source, target)
+    
+I'm currently playing with leveraging the time component of the graph for another project, but for this project I just flattened the graph by ignoring the time component. This basically gives us a directed bipartite graph whose edges look like this:
+
+        Subreddit(source) --> Redditor(username) --> Subreddit(target)
+        
+I wanted to build a weighted subreddit->subreddit graph. The first projection I tried was to just count the number of times a given (source, target) pair occurred in the data. This gave reasonable results, but necessitated a lot of additional processing because of bots. For those unfamiliar with reddit bots, the problem is basically that there are a lot of automated user accounts patrolling reddit generating formulaic comments, which can include specific subreddit names. For instance, /r/Askreddit has an automoderator rule that recommends that users post certain kinds of questions to /r/answers. Failing to ignore this heavily inflates the /r/Askreddit -> /r/Answers edge weight. Similarly, there are many bots that post a link to a single subreddit whenever they comment (usually the bot's personal subreddit just to centralize discussion about the bot, not to spam a subreddit). There are also users who are trying to promote new subreddits that behave similarly, but they are much less of a problem in the data than bots, although I would like to handle them as well.
+
+I began buy pruning out the most problematic bot accounts one by one. This worked very well, but ultimately this approach is clearly not scalable. 
+
+I ultimately went with a different projection: calculating edge weight between two subreddits as the count of unique users associated with that edge. This approach has the added benefit of making edge weights interpretable as "the number of users who voted in support of this subreddit->subreddit relationship."
+
+Using this alternative projection, I found I didn't need to account for bots at all. I still could, but each bot now only contributes a single "vote" so their effect is sufficiently mitigated to no longer being problematic and arguably being as useful as any other user promoting a given edge. Instead of targetting bots directly, I found I got good results by just dropping all edges that didn't have a weight of at least 2. 
+
+I had been storing data for subredditmentions.com in a sqlite database, so building the edge list reduced to a simple sql query:
+
+    SELECT source, target, COUNT(DISTINCT users) weight 
+    FROM mentions 
+    GROUP BY source, target
+    HAVING weight >= 2;
+    
+To build the visualization, I spooled the edgelist to a csv, read it into Gephi, calculated the layout using the ForceAtlas 2 algorithm in LinLog mode with the "prevent overlap" feature, and then exported the result toa sigma.js webapp using a plugin provided by the Oxford Internet Institute.
+
+
+---
+File: _posts/2016-02-03-turmoil-in-social-networks-graph-anomaly-detection.md
+---
+---
+layout: post
+title: Identifying Turmoil in Social Networks With Graph Anomaly Detection
+excerpt: "Using graph anomaly detection to identify unusual changes in the Reddit community structure that are characteristic of community turmoil"
+tags: [link analysis, igraph, R, network analysis, social network analysis, anomaly detection, reddit]
+modified:
+comments: true
+---
+
+<figure>
+    <img src="/images/mad_as_heck.jpg">
+</figure>
+
+(This is an article I wrote up 2/3/2016 but never got around to publishing. I'm post-dating it on the blog to place it in the appropriate timeline of my work, but I'm actually only just publishing this 1/4/2017. I hope to revisit this analysis and update it with more recent reddit data soon, in particular to analyze the effect of the 2016 US Presidential Eleciton on the reddit community)
+
+## Background
+
+I'm interested in examining how the reddit community has been evolving over time. In particular, the community was in turmoil this summer in response to policy and personnel changes which had a significant impact on the reddit community, and I was curious to see if I could quantify the effects these events had on the community.
+
+## The Data
+
+/u/Stuck_In_the_Matrix released a corpus of public reddit comments, which he has been updating monthly. Felipe Hoffa, of the Google Big Query team, made this dataset available on Big Query. I am thankful to them both for making this incredibly interesting dataset available.
+
+### Building a graph
+
+A graph is a collection of entities (nodes) connected by relationships of some kind (edges). The reddit can be represented as a community where redditors and subreddits are nodes, and redditors are connected to subreddits by commenting activity. In this formulation, subreddits never connect directly to surbeddits, and redditors similarly never connect directly to redditors. This kind of graph, where there are two classes of nodes that are mutually never connected to each other is called a "bipartite" graph. We can "project" our bipartite graph into a unipartite graph by aggregating connections. Using this technique, we can form connections between subreddits by counting the number of redditors they are connected to in common.
+
+User engagement on internet communities like reddit follows a 1-9-90 rule, which means that there are a lot of low actvitity users who will essentially be "noise" in our analysis. To clean up our graph, it's helpful to focus only on the behaviors of "active users. For the purpose of this analysis, I've used a fairly liberal definition of "active": 
+
+* A user is "active" in a subreddit if there were at least two submissions in that subreddit in which the user commented.
+* A subreddit is considered active during a given time period if it has at least one active user during that month.
+
+To mitigate the effect of bots and users promoting new subreddits (and to generally limit the effect that individuals can have on the overall community topology), I only considered edges with a weight of at least "2".  
+
+
+Finally, I constructed a graph of this kind for each month in 2014 and 2015. By comparing changes in the graphs from week to week, we can learn a lot about how the community has been changing and even highlight periods of significant change.
+
+## Quantifying turmoil in the community with graph anomaly detection
+
+By comparing how relationships between subreddits change over time, we can identify time periods during which the community at large is undergoing turmoil. Specifcally, we can apply "scan statistics" over the dynamic graph, giving us a measure of the chaos in the community at each time point and highlighting the subreddits that are the focal points of the tumult.
+
+### Methodological details for graph anomaly detection
+
+One approach to this kind of anomaly detection was suggested by [Priebe et. al. (2005)](http://www.cis.jhu.edu/~parky/Enron/) in their application of scan statistics to the Enron email network. Their problem was similar in that they were trying to identify time periods during which their network of interest was undergoing upheaval.
+
+The approach is as follows: for each node in the graph, isolate its community out to some depth \\(k\\) (usually k=1 or 2). Then calculate some statistic over this subgraph, which we will call the "scan statistic." The scan statistic used by Serrano is the sum of edge weights in the subgraph. We calculate the scan statistic for each node for each time step. Then, we standardize our observations by looking back across \\(\tau\\) timesteps. Finally, for each timestep we calculate the max value taken by the scan statistic for any node in that time period, and examine the distribution of this max over all time periods to identify anomalous time steps.
+
+### Graph anomaly detection results
+
+The following plot can be interpreted as a quantification of the monthly "chaos"" in the reddit community over the last year.
+
+<figure>
+    <a href="/images/reddit_chaos_2015.png">
+        <img src="/images/reddit_chaos_2015.png">
+    </a>
+</figure>
+
+There are two very well defined spikes here, corresponding to chaos centering around the subreddits /r/thebutton in April, and /r/Blackout2015 in June. These spikes corresond to changes in redditors behaviros in response to the following events:
+
+
+* 4/1/2015: The subreddit /r/thebutton is created for the annual April Fools joke, spawning a [sprawling associated micro-community](http://dmarx.github.io/SubredditMentionsGraph/network/#thebutton) of about 20 new subreddits.
+
+
+* 7/2/2015: Victoria is fired, resulting in the "2015 Blackout". In response, a new subreddit, /r/ModSupport, was created to centralize mod-admin communication, and CEO Ellen Pao stepped down (a week later on 7/10/2015) to be replaced by Steve Huffman. Additionally, subreddits such as /r/Blackout2015 and /r/WatchRedditDie were formed to centralize expressions of frustration with the state of reddit and the behaviors of community members in leadership roles (volunteer moderators, or "mods", and paid members of reddit staff, or "admins").
+
+I had expected a third event, the banning of /r/FatPeopleHate on 6/10/2015, to pop out as another source of significant comunity chaos, but it appears to have been overshadowed by the creation of the /r/freegold subreddit.
+
+## The Blackout
+
+The graph anomaly detection presented above did a good job highlighting periods of significant chaos in the reddit community. One period that really stands out is the spike associated with the Blackout. A detailed history and description of the Blackout can be found [here](https://www.reddit.com/r/OutOfTheLoop/wiki/index/retired_questions#wiki_what_was_the_amageddon.2Freddit_blackout.3F), so I won't waste time providing background in this article. Just follow the link if you want the context.
+
+In any event: in response to the Blackout, many users declared that they were fed up with reddit for various reasons, announced that they were abandoning reddit (many hoped to gain support for the reddit alternative Voat), and encouraged others to follow suit. For example, consider [this manifesto](https://www.reddit.com/r/Blackout2015/comments/3c2xmk/ive_closed_down_rcrappydesign_for_good_ive/) posted by the then owner of the subreddit /r/CrappyDesign, announcing he was shuttering the subreddit for good (he was unsuccessful, the community convinced the admins to place someone new in charge).
+
+It's clearly evident that the Blackout was an extermely significant event in the reddit community (the most tumultous event in 2015, according to the data, and likely in reddit's history if I were to allow my analysis to go further back).
+
+
+---
+File: _posts/2017-01-01-map-of-reddit-by-active-users.md
+---
+---
+layout: post
+title: Mapping reddit's active communities
+excerpt: "An improved bipartite projection for social network modeling"
+tags: [link analysis, networkx, gephi, python, network analysis, reddit]
+modified:
+comments: true
+---
+
+<figure>
+    <a href="https://dmarx.github.io/reddit-map/">
+        <img src="/images/reddit_graphs/full_graph.png">
+    </a>
+</figure>
+
+Click on the image above to visit an interactive version of the reddit map discussed below (not supported on mobile). Jump to the bottom of the article if you'd like to see a selection of community clusters I found interesting.
+
+## Background
+
+For about two years now, I've played with different approaches to investigating the community structure of reddit. A year ago, I published a "map" of reddit (that I had actually built nearly a year prior, just hadn't written up). The approach I used was motivated by a particular unusual dataset I'd collected. It worked out really well, but I wanted to build a more "complete" picture of the reddit community. In particular, I wanted to build something that would be generally useful for other people. In my analyses over the years, I have discovered a lot of interesting corners of reddit: some of these are just fascinating that they exist at all (e.g. the surprisingly sprawling, albeit currently inactive, communities that have sprung up around April fools jokes), but others were actually extremely relevant and enjoyable to me personally, and I wouldn't have discovered them were it not for the tools I'd build for my personal analyses. 
+
+There are two main ways users discover new subreddits. They either find them looking for something specific, like maybe trying to find a community associated with a TV show, or they stumble across them by chance. "By chance" generally manifests as one of the following situations:
+
+    * Content from a subreddit the user didn't know about appears on the /r/all frontpage, which aggregates content across reddit
+    * An unfamiliar subreddit appears in the "trending subreddits" list
+    * A comment links to or discusses the existence of an unfamiliar subreddit
+    * An unfamiliar subreddit is listed in the sidebar or wiki of a subreddit the user frequents, as part of a list of "related communities" that many subreddits curate for their users
+    * The user subscribes to a subreddit promotion service, like /r/SubredditOfTheDay
+
+Unfortunately, many of the gems on reddit are extremely esoteric and have such narrow focuses that it wouldn't even occur to most people that a community would exist around them, such as /r/ImageStabilization, /r/INTP, or /r/RandomActsOfAmazon. 
+
+As users spend more time on the website, they become more skilled at navigating the ecosystem and finding what's out there and what's relevant to their interests. There's an unfortunately difficult learning curve for new users: reddit is a big place and it can be difficult to explore. In the absence of a user-tailored "because you liked these subreddits, you might also like X, Y, and Z," we can facilitate subreddit discovery by providing a mechanism for users to explore subreddits at a high level to see what's available to them. 
+
+### A quick tutorial on bipartite network analysis
+
+A network is called "bipartite" or "two-mode" if the nodes in the network can be divided into two separate collections (i.e. classes) such that no node connects to any nodes of the same class, only to nodes of the opposite class. Social networks like reddit are often modeled this way: users and subreddits are nodes, and users are connected to subreddits based on their activities. An operation called a "bipartite projection" or "unimode projection" is commonly used to form connections between members of the same class through members of the other class. The most common approach is to create edges between members of the first class weighted according to the number of nodes they share in the second class. For example, we could connect users together by counting the number of subreddits in which they both participated, or connect subreddits by counting the users who participated in both. 
+
+To construct the graph described below, I perform exactly this bipartite projection, but with an additional edge weight normalization step: instead of weighting edges based only on the counts of mutual users between them, we divide the edge weight by the degree in the bipartite network (the count of users attached to each) of the nodes in turn, to create two separate "directed" edges where each edge is weighted according to the user count of the target of the edge. The weight of the edge is then interpretable as "what is the proportion of members of the target community who also participate in the source?" or alternatively, "what is the estimated probability that a member of the target community, chosen at random, is also a member of the source community?" This way, we can differentiate between 1000 mutual users between two subreddits that each have over 1M users (a weak relationship), and 1000 mutual users between two subreddits that each have about 2k users (a strong relationship. Additionally, if one subreddit has 1M users and the other has 2k users, we can construct an edge whose direction suggests that the smaller subreddit is a specialization forked from the larger community (this is why we weight by the degree of the target node: if we only end up keeping one of the two edges, the smaller community will always be the edge's target).
+
+(warning: incoming greek)
+
+Let \\(n\\) denote the number of nodes of the primary class (in this case, subreddits), and \\(m\\) denote the number of nodes of the secondary class (users) through which we would like to connect nodes of the primary class. Let \\(A\\) denote the \\(n x m\\) adjacency matrix of the network. Let \\(P\\) denote the one-mode projection onto the primary class.
+
+The simple bipartite projection is equivalent to calculating the number of length-2 paths between each pair of nodes in the network. There's a convenient linear algebra trick for calculating this: \\(P=A*A^T\\). The bipartite node degree \\(d\\) is then given by the row vector \\(d=rowsums(A)\\). Then the edge normalization described above is performed simply by elementwise dividing \\(d\\) with the transpose of \\(P\\) and then taking the transpose of the result.
+
+Concretely, here's a code snippet demonstrating how to perform this operation in R:
+
+{% gist 8981ad329506b250498f1f52c3050a9c %}
+
+I seriously doubt this is a truly novel approach, but although I haven't done a thorough lit review it at least isn't particularly common, to the best of my knowledge. I've found it to be extremely effective in this project and recommend it to other researchers investigating similar bipartite social networks.
+
+## Methodology
+
+As the goal here is to provide a tool for people to discover individual subreddits and larger communities that may be interesting to them, I decided to constrain my attention to just the last two years of public comments to learn inter-subreddit relationships, and then to further constrain attention to subreddits that have achieved a threshold of activity within the last three months. Additionally, to learn relationships between subreddits, instead of just looking at all of the mutual users between two subreddits, I determine if a user is active in a given subreddit at some period, and then count mutual active users between two subreddits in that period (i.e. perform a bipartite projection onto the subreddit node set). We can contextualize that raw count as a proportion by comparing the number of mutual users between two subreddits and dividing by the total active users of each, respectively, to determine the relative proportion of users the two subreddits share (i.e. the edge normalization procedure described above). This procedure is repeated for fixed windows in the data to ensure that relationships indicate users are active in both communities at the same time. The resulting sequence of graphs are then flattened into a single graph by taking the max observed weight for each edge. Finally, we filter out subreddits and edges by applying thresholds discussed below.
+
+That's the high level overview. Concretely, here's how this graph was constructed:
+
+* Public comments between January 2015 and November 2016 (via the public comments dataset on Google BigQuery collected by /u/Stuck_In_the_Matrix and published by Felipe Hoffa) were aggregated to determine, for each month, how many unique submissions each user commented in in each subreddit in which they participated.
+
+* A user is defined as "active" in a subreddit if they commented in at least 3 separate submissions in a given month. This definition might be somewhat aggressive and if I were to change anything in this experiment it would be to reduce this threshold to 2.
+
+* To be considered for relationship inference in a given month, a subreddit had to have had at least 10 active users that month. Call subreddits satisfying this condition "active subreddits".
+
+* Relationships between subreddits were inferred by counting the mutual users between active subreddits. Relationships with fewer than 2 active users in common were ignored.
+
+* Bidirectional relationships were then converted to directed relationships, weighted according to the count of mutual active users between the two subreddits divided by the total active users of the target of the relationship (in a given month). Call this the "mutual user ratio"
+
+* Relationships with a mutual user ratio below 0.1 were ignored. This threshold was chosen qualitatively and I'm fairly satisfied with it. I could have been "more statistical" by, instead of using a fixed ratio, doing a test of proportions for the hypothesis that the mutual user ratio is greater than or equal to 0.1, but I doubt that would have given especially different results besides being less forgiving to subreddits with very few active users and adding significant computation time. Applying statistical significance here might give the air of increased validity, but I think it's the wrong approach. 
+
+* Relationships were then aggregated by taking the max of the observed mutual user ratio across all months to flatten the time dimension. 
+
+* Subreddits that had an average of fewer than 1 active user in the last three months of the data were then dropped from the graph to attempt to direct users of the application to subreddits with active communities, rather than subreddits that were active at some point in the data but are now dead (e.g. the sprawling communities that formed around the 2013 or 2015 April Fools pranks. See /r/TheButton,  /r/Periwinkle, or /r/Orangered for entry points to these communities).
+
+* Additionally, drop subreddits that, after applying the above procedures, have degree zero (i.e. aren't connected to any other subreddits). This has the effect that subreddits that were not recently active or where a relationship could not be inferred are excluded. Notable examples of ignored but active subreddits include /r/MapleStory, /r/MSLGame and /r/Indonesia.
+
+* Identify communities algorithmically (via Gephi's modularity method with reduced resolution chosen qualitatively)
+
+## Previous work
+
+I want to give a shout out to Dr. Randal Olson (/u/rhiever) who was one of the first people to experiment with [mapping reddit](http://www.randalolson.com/2014/10/27/the-reddit-world-map/), and certainly the first to go about getting his results [published academically](https://peerj.com/articles/cs-4/). My approach is similar to his, both in how edges were inferred and how the data was visualized, but I want to highlight a few key differences:
+
+* Where Randal looked at all mutual users between all subeddits, I make an effort to constrain attention to users who can be described as "active" in those subreddits, and additionally constrain attention to subreddits that were recently active to avoid directing users to "dead" communities.
+
+* Where Randal colored nodes in his visualization based on their degree, I colored nodes based on their community membership and in such a way as to maximize the perceptual difference between any two random communities. Details below.
+
+* Additionally, I provided a mechanism to allow users to constrain their attention to the algorithmically inferred communities in the reddit graph. To help users navigate these communities, I labelled them according to "prototype" subreddits. I designated the two most active subreddits in each community as the labelling prototypes. This gave very good results, but in retrospect I might have gotten better results for a handful of communities if I had instead designated prototypes based on subscribership (e.g. the "RocketLeagueExchange/DestinyTheGame" community would instead have been labelled "ps4/DestinyTheGame"). 
+
+* Randall inferred edge weights from a simple bipartite projection, whereas I used an edge weighting scheme that contextualized mutual user counts as population proportions.
+
+* Where Randal used a statistical approach determine which edges to remove, I leveraged subject matter expertise to construct appropriate thresholds. This seems like a subtle choice but I think it is an extremely important distinguishing feature because I think Randal's approach was actually deceptively aggressive. Let's dig into some of the nuances behind this particular decision.
+
+## Edge significance
+
+The general technique Randal employed for identifying "significant" edges goes like this (I haven't read his article or the original edge significance article in some time so I might have some of the minor details fuzzed):
+
+1. Calculate the "strength" of a node (i.e. subreddit) by summing up the weights of all of its edges. This is done separately for incoming and outgoing edges.
+2. Calculate each edges normalized weight as (edge weight)/(node strength).
+3. There's a special distribution we can reference to determine what we would expect a "random" edge's normalized weight to be as a function of the degree (number of edges) of the node whose strength we're scaling from. For anyone interested, this distribution is constructed by estimating the expected length of any segment resulting from slicing up a unit distance into "n" pieces, where n is the node degree and the index of each cut is drawn from a uniform distribution (such that there are n-1 cuts to give n slices).
+4. This leads us to a traditional frequentist statistical test: we choose a significance threshold (somewhat arbitrarily) to get a cut-off normalized edge weight, which can be interpreted as "100*(1-threshold)% of edges with normalized strength weaker than the cut off are extremely likely to be 'random' edges that we can ignore."
+5. Drop all nodes that aren't connected to any edges after applying this procedure.
+
+This approach has the effect of preserving the "multi-scale" structure of the network, which essentially means that we can use this technique to extract a smaller version of the network that will exhibit statistical properties very similar to the larger network (aka the "backbone" network). If we're mainly interested in calculating statistics on our network, applying this approach will make our lives (and calculations) a lot easier. 
+
+But, that's not our goal. Our goal is to create a map that members of the network can use to navigate the network, and in particular discover esoteric sub-communities that may be relevant to them that they may have had difficulty finding via more "organic" mechanisms currently available. The application of a statistically inferred threshold is appealing because, frankly, people like p-values (despite the fact that most people don't interpret them correctly, which is a whole other issue). But it's still just a heuristic. Attaching a p-value to your heuristic doesn't necessarily make it better or worse than an alternative that doesn't leverage p-values, like relying on subject matter expertise. 
+
+My main problem with the "edge significance" approach is that it's actually deceptively aggressive. Consider two nodes with degree one that are connected by a single edge with high edge weight: no matter what threshold we set, this approach will always eliminate that edge, dropping both nodes from the network. Imagine a sequence of nodes that are connected in a circle such that each node has degree two: every single one of those edges will be dropped by this technique, regardless of the weights of those edges. Similarly, imagine an arbitrarily large clique of nodes that are all connected by equally (high) weighted edges to each other and no one else: this technique will again cause us to drop all edges in the clique and as a result to drop the clique entirely. I'd posit that in all of these scenarios, the edges that were removed were objectively "significant" in the context of our goal, but application of this blind statistical approach failed us because we had alternative information we could have used to identify the importance of the edges we removed.
+
+The edge significance approach is fine if we just want to extract a statistically similar subgraph, or in the absence of better heuristics for  determining edge significance. But, we're interested in much more than just finding the "backbone" subgraph, and we can actually construct much better approaches to identify "significant" edges here. There are definitely applications where this approach to edge significance is the best way to go, but I don't think this was one of them (nothing personal, Randal. Love your work). 
+
+I hope to explore the difference between my approach and Randal's more in depth in a later post, but let's be honest: with my recent frequency of "1 blog post per year," I wouldn't hold your breath.
+
+## Coloring communities
+
+Gephi (the tool both Randal and I used to build our visualizations) by default paints communities with a randomized color palette, but I found this unsatisfying. The resulting aesthetics can be messy, and just by chance a lot of colors end up being very perceptually similar. 
+
+To try to increase the perceptual difference between any two random communities, I built my palette by rotating through the HSL color space, which is a cylindrical color space designed based on the human visual system. HSL doesn't actually exhibit perceptual uniformity, but it's a reasonable approximation. In the future, I'd like to re-color the graph using a palette derived from the CIE color space, which does exhibit perceptual uniformity. The main reason I used HSL was because there is a simple interface to it in python, via the Seaborn package.
+
+<figure>
+	<img src="/images/reddit_graphs/wheel_palette_63.png" alt="63 color HSL palette">
+</figure>
+
+After deriving a sequential palette, I reorganized my palette by "striding" across the color indices with a stride of 5 (i.e. taking every 5th color).
+
+<figure>
+	<img src="/images/reddit_graphs/strided_wheel.png" alt="'Stride' shuffled HSL palette, with a stride of 5">
+</figure>
+
+The rationale behind this was to maximize the ability to distinguish between the largest communities, which are characterized by default subreddits and consequently are clustered together. By applying this shuffled palette to communities in descending order of community size, I was able to both maximize the likelihood that two random communities are distinguishable, maximize distinguishability of a handful of the largest communities (specifically the top floor(n_communities/stride) = floor(63/5) = 12 communities), and additionally create a pleasing rainbow effect in the middle of the visualization from the default subreddits.
+
+## Final thoughts
+
+This graph is mainly powerful to help users find communities with similar interests where people are engaged in the comments. As a next step, I'd like to infer the reddit cross-posting network as well to identify subreddits that are related by content and merge that network into this one. This would capture connections to subreddits whose users may not be especially engaged in the comments, but where the content might still be interesting to someone exploring the graph.
+
+At the very least, I hope to keep the graph up-to-date with the most current public comments dataset on google bigquery, which I think is one-month lagged to the live comment activity.
+
+## Some Results
+
+I strongly encourage you to explore the interactive reddit map yourself. It unfortunately is not supported on mobile presently, so here are a 
+few selected results as static images for people who can't explore the graph themselves.
+
+
+Console gaming (Xbox One and PS4. There's also a Nintendo community, but it's hanging out further away with the pokemon community) interest community:
+
+<figure>
+    <a href="/images/reddit_graphs/RocketLeagueExchange_DestinyTheGame.png">
+	<img src="/images/reddit_graphs/RocketLeagueExchange_DestinyTheGame.png" alt="Console Gaming Reddit Community">
+    </a>
+</figure>
+
+Detail of the computer hardware interest community surrounding /r/buildapc, a microcommunity embedded in the larger high-performance computing community characterized by /r/gaming and /r/pcmasterrace:
+
+<figure>
+    <a href="/images/reddit_graphs/gaming_pcmasterrace__detail.png">
+	<img src="/images/reddit_graphs/gaming_pcmasterrace__detail.png" alt="Reddit Computer Hardware Community">
+    </a>
+</figure>
+
+
+RPG and boardgames community:
+
+<figure>
+    <a href="/images/reddit_graphs/DnD_boardgames.png">
+	<img src="/images/reddit_graphs/DnD_boardgames.png" alt="Reddit RPG/Boardgames Community">
+    </a>
+</figure>
+
+Reddit users are often stereotyped as being extemely nerdy, but don't be fooled: there are some extemely stylish people on reddit. Here's the men's fashion and lifestyle interest community:
+
+<figure>
+    <a href="/images/reddit_graphs/hiphopheads_streetwear__detail.png">
+	<img src="/images/reddit_graphs/hiphopheads_streetwear__detail.png" alt="Reddit Men's Lifestyle Community">
+    </a>
+</figure>
+
+We've got jocks too: there's a very large community focused on American Sports (which is right next to the soccer interest community, not shown):
+
+<figure>
+    <a href="/images/reddit_graphs/nfl_CFB.png">
+	<img src="/images/reddit_graphs/nfl_CFB.png" alt="American Sports Reddit Community">
+    </a>
+</figure>
+
+I'm not even sure what to call this... the "drama" community, characterized by subs like /r/SubredditDrama, /r/ShitRedditSays, /r/KotakuInAction, etc.
+
+<figure>
+    <a href="/images/reddit_graphs/KotakuInAction_SubredditDrama.png">
+	<img src="/images/reddit_graphs/KotakuInAction_SubredditDrama.png" alt="Reddit 'Drama' Community">
+    </a>
+</figure>
+
+The much smaller and surprisingly (to me) unrelated "red pill" community, which has a reputation for supporting misogyny:
+
+<figure>
+    <a href="/images/reddit_graphs/TheRedPill_constellation.png">
+	<img src="/images/reddit_graphs/TheRedPill_constellation.png" alt="Reddit 'Red Pill' Community">
+    </a>
+</figure>
+
+Reddit isn't all men though: there are women too. There's a sprawling community focused on makeup and beauty discussion:
+
+<figure>
+    <a href="/images/reddit_graphs/MakeupAddiction_AsianBeauty.png">
+	<img src="/images/reddit_graphs/MakeupAddiction_AsianBeauty.png" alt="Reddit Makeup Community">
+    </a>
+</figure>
+
+
+There's also a large amateur porn contingent, aka the "gone wild" community:
+
+<figure>
+    <a href="/images/reddit_graphs/sex_GoneWild.png">
+	<img src="/images/reddit_graphs/sex_GoneWild.png" alt="Reddit GoneWild Community">
+    </a>
+</figure>
+
+Here's reddit's stoner community:
+
+<figure>
+    <a href="/images/reddit_graphs/trees_drugs__detail1.png">
+	<img src="/images/reddit_graphs/trees_drugs__detail1.png" alt="Reddit Stoner Community">
+    </a>
+</figure>
+
+And finally, much lesser known than the stoner community, there's a fairly large community geared towards general drug use, which interestingly (bu unsurprisingly) absorbs the smaller "darknet markets" community:
+
+<figure>
+    <a href="/images/reddit_graphs/trees_drugs__detail2.png">
+	<img src="/images/reddit_graphs/trees_drugs__detail2.png" alt="Reddit Drugs Community">
+    </a>
+</figure>
+
+## Acknowledgements
+
+First and foremost, huge thanks to [/u/stuck_in_the_matrix](http://www.reddit.com/u/stuck_in_the_matrix) for collecting the dataset of public comments I used for this project. Also, thanks go out to Felipe Hoffa from Google, who published this data set as a public collection on BigQuery. Thanks also to Oxford's OII and JISC for building the incredibly useful template that powers the sigma.js webapp, and finally thanks to Randy Olson for improvements he made to the template.
+
+
+
+---
+File: _posts/2017-01-09-binomial-edge-significance--binomial-graph-anomaly-detection.md
+---
+---
+layout: post
+title: Improving the performance and scalability of graph anomaly detection with a new approach to edge significance for dynamic bipartite projections
+excerpt: "Identifying edges significant to graph anomaly calculations by building on the binomial model for bipartite networks"
+tags: [link analysis, igraph, R, network analysis, social network analysis, anomaly detection, reddit]
+modified:
+comments: true
+---
+
+## Background
+
+This blog post discusses my most recent research in a series of experiments that I hope to publish academically soon. A good place to get some context on what I'm talking about is the first article in the series: [Identifying Turmoil in Social Networks With Graph Anomaly Detection](http://dmarx.github.io/turmoil-in-social-networks-graph-anomaly-detection/). In particular, you should check out the section **Methodological details for graph anomaly detection**, as the discussion below presupposes familiarity with the procedure described there.
+
+## Procedure
+
+[Last week](http://dmarx.github.io/map-of-reddit-by-active-users.html), I described a bipartite projection that produces a graph model whose edges can be interpreted as binomial probabilities. These probabilities are represented by a number of successes (in the particular example from last week, the count of mutual users) and a number of total trials (the total number of active users for a particular subreddit). By performing this projection over a series of time slices of a dynamic graph (i.e. a graph with a time component) we get a series of binomials associated with each edge over time. This lends itself very nicely to the problem of anomaly detection: in the case of the social network I am studying (reddit), I am particularly interested in unusual spikes of activity across the graph, and these "spikes" have a very straight-forward interpretation at the edge level when we apply this binomial framework.
+
+For each edge in the "current" time slice of the graph we are interested in, we infer the expected activity by summing up the successes and trials associated with that edge over a window of time slices of the recent past. This gives us a "baseline" proportion. We can then identify edges that exhibit statistically significant increases in activity by invoking a simple test for difference in proportions. We then filter each time to statistically significant edges, forming a graph that specifically models significant increases in activity. 
+
+## Results
+
+### Qualitative performance
+
+I've found that performing anomaly detection procedures on the significance graphs has similar or better results (qualitatively), which supports the the theory that these edges contain the bulk of the information relevant to identifying anomalous community behaviour. Let's compare the results of applying the anomaly detection procedure using a edge count for the local scan statistic on order-1 neighborhoods (i.e. k=1) normalized against the previous two time periods (tau=2) on the reddit public comments dataset from January 2008 through November 2016. 
+
+<figure>
+    <a href="/images/edge_signif/filtered_results_top10_2008_2016.png">
+        <img src="/images/edge_signif/filtered_results_top10_2008_2016.png">
+    </a>
+</figure>
+
+<figure>
+    <a href="/images/edge_signif/unfiltered_results_top10_2008_2016.png">
+        <img src="/images/edge_signif/unfiltered_results_top10_2008_2016.png">
+    </a>
+</figure>
+
+Because the graphs in the filtered dataset are much smaller we can't compare the values of the scan statistics directly, but if we normalize the scan statistics relative to the max value we observed (after removing the January 2015 observation, which was a tremendous outlier in both datasets that I need to investigate) we see that the scan statistics performed very similarly. Despite the differences in the two data sets, the procedure identified the same anomaly locus in 22 periods. For the most part, the statistics agree about the most turbulent periods in the graph.
+
+<figure>
+    <img src="/images/edge_signif/matched_bevhaior.png">
+</figure>
+
+Let's hone in on the results from the last two years of data and compare the results side by side. In the following table, "nexus anomaly" denotes the node in the graph (i.e. the subreddit) that had the highest value for the local scan statistic in that period.
+
+|date|Anomaly Nexus (filtered)|Anomaly Nexus (unfiltered)|scan statistic (filtered)|scan statistic (unfiltered)|Normalized scan statistic (filtered)|Normalized scan statistic (unfiltered)|Does Anomaly Nexus Match?|
+|----||----||----||----:||----:||----:||----:||:----:|
+|2015/02|betterCallSaul|FeelsLikeTheFirstTime|797|46823|15%|16%||
+|2015/03|projecteternity|dnbhl|332|36462|6%|13%||
+|2015/04|thebutton|thebutton|5285|290220|100%|100%|X|
+|2015/05|Boxing|UnitedColors|527|40516|10%|14%||
+|2015/06|fo4|freegold|689|89904|13%|31%||
+|2015/07|Blackout2015|Blackout2015|2386|193179|45%|67%|X|
+|2015/08|MensLib|MensLib|299|52802|6%|18%|X|
+|2015/09|apple|Amd|378|77305|7%|27%||
+|2015/10|baseball|Nexus6P|1603|100583|30%|35%||
+|2015/11|JessicaJones|GGFreeForAll|197|42558|4%|15%||
+|2015/12|MakingaMurderer|MakingaMurderer|627|90627|12%|31%|X|
+|2016/01|stevenuniverse|cssfuckfest|668|65758|13%|23%||
+|2016/02|thewalkingdead|CapitalismVSocialism|1679|158323|32%|55%||
+|2016/03|Defenders|ZombieSurvivalRP|960|81655|18%|28%||
+|2016/04|sweden|AskBernieSupporters|1100|128069|21%|44%||
+|2016/05|Battlefield|Mr_Trump|1471|162830|28%|56%||
+|2016/06|uncensorednews|uncensorednews|2825|161728|53%|56%|X|
+|2016/07|TheSilphRoad|Incels|1258|103127|24%|36%||
+|2016/08|olympics|AskThe_Donald|4378|161663|83%|56%||
+|2016/09|southpark|CivilizationSim|1112|94475|21%|33%||
+|2016/10|westworld|NintendoSwitch|2494|132032|47%|45%||
+|2016/11|the_meltdown|shittyrainbow6|2932|141939|55%|49%||
+
+Again, we can see that the two approaches achieved similar results, especially in many of the most tumultuous periods. Concretely, the highlighted periods/subreddits that the filtered and unfiltered procedures agree upon are associated with the following events:
+
+|Period|Anomaly Nexus|Event likely associated with the observed anomaly|
+|--------|---------|--------|
+|April 2015|/r/thebutton|Reddit's 2015 April fools "prank" spawns a [sprawling micro-community](images/reddit_graphs/the_button__mentions.png)|
+|July 2015|/r/Blackout2015|The firing of a Reddit employee triggers site-wide unrest in the form of protests and demonstrations of various kinds|
+|August 2015|/r/MensLib|Not gonna lie: I consider myself something of a Reddit historian at this point, but I have no idea what was significant about this community August 2015|
+|December 2015|/r/MakingAMurderer|The Netflix series Making A Murder premiers to significant acclaim|
+|June 2016|/r/uncensorednews|The worst mass shooting in US history occurs at the Pulse Nightclub in Orlando|
+
+There were, however, some important places where they disagree. The significance filtered approach seems to generally have had "better" hits:
+
+|Period|Anomaly Nexus|Event likely associated with the observed anomaly|
+|--------|---------|--------|
+|February 2015|/r/betterCallSaul|Better Call Saul, the much awaited spin-off of Breaking Bad, is released|
+|May 2015|/r/Boxing|The Floyd Mayweather vs. Manny Pacquiao fight is the most anticipated boxing match in recent memory|
+|October 2015|/r/Baseball|The 2015 World Series occurs|
+|November 2015|/r/JessicaJones|The Netflix original TV series Jessica Jones is released to significant acclaim|
+|April 2016|/r/Sweden|Sweden's housing minister resigns after comparing Israel to Nazi Germany|
+|May 2016|/r/Battlefield|The upcoming release of the video game Battlefield 1 is announced|
+|July 2016|/r/TheSilphRoad|The augmented reality game Pokemon GO! is released and quickly becomes the most used mobile app in the world|
+|August 2016|/r/Olympics|The Summer Olympics occurs|
+|September 2016|/r/Southpark|Season 20 of South Park commences|
+|October 2016|/r/westworld|The HBO series WestWorld debuts to significant acclaim|
+|November 2016|/r/the_meltdown|Donald Trump defies predictions and wins the US Presidential election|
+
+There are a few cases where it looks like the unfiltered procedure had hits worthy of note not caught by the filtered procedure
+
+|Period|Anomaly Nexus|Event likely associated with the observed anomaly|
+|--------|---------|--------|
+|February 2016|/r/CapitalismVSocialism|The ongoing US presidential election|
+|April 2016|/r/AskBernieSupporters|The ongoing US presidential election|
+|May 2016|/r/Mr_Trump|The ongoing US presidential election: [in-fighting](http://www.vox.com/2016/5/21/11701482/donald-trump-subreddit-drama-europeans) occurs in the larger community of Reddit's Trump supporters|
+|August 2016|/r/AskThe_Donald|The ongoing US presidential election|
+
+In all of these cases, this disagreement does not appear to suggest any fault or weakness on the part of the filtered version of the procedure: in all four of those periods, the filtered procedure honed in on a subreddit that was the focal point for a significant event in the community. There isn't necessarily a single source of community tumult that is potentially of interest to us in a community as large, wide, and diverse as Reddit, so small variations in anomaly detection procedure can produce different but equally interesting results. I hope to share some of the results of additional modifications to the anomaly detection procedure in the near future (such as expanding the neighborhood beyond k=1 and using different local scan statistics).
+
+### Data compression
+
+The "signficance graphs" resulting from this edge threshholding are orders of magnitude smaller -- by edge count and positive-degree nodes -- than their unfiltered counterparts. 
+
+<figure>
+    <img src="/images/edge_signif/vcount.png">
+</figure>
+
+<figure>
+    <img src="/images/edge_signif/log_ecount.png">
+</figure>
+
+Additionally, the ratio of vertices to edges is roughly constant (approximately 0.245) in the filtered graph, whereas this ratio approaches zero as the graph grows in the unfiltered graph. 
+
+<figure>
+    <img src="/images/edge_signif/log_vcount_over_ecount.png">
+</figure>
+
+In other words, edge count grows linearly with node count in the significance graphs, but edge count grows much faster than node count in the unfiltered graphs.
+
+<figure>
+    <img src="/images/edge_signif/vcount_vs_ecount.png">
+</figure>
+
+### Performance gains
+
+Furthermore, because the filtered graphs are significantly smaller, the anomaly procedure is accomplished in seconds where it previously took several minutes, for first order local scan neighborhoods. Here are some performance comparisons between the significance filtered and unfiltered datasets (2007-2016, monthly graphs). All experiments performed on a conventional laptop (and for all experiments, tau=2):
+
+|Procedure|Neighborhood order (k)|Time|
+|:----:|:----:|----:|
+|Unfiltered|1|3.5 minutes (215 seconds)|
+|Unfiltered|2|Stopped after an hour|
+|Unfiltered|3|Not attempted|
+|Filtered|1|40 seconds|
+|Filtered|2|44 seconds|
+|Filtered|3|46 seconds|
+
+## Conclusion
+
+The application of binomial significance edge threshholding to the dynamic bipartite projection of a user-community social network results in a significant distillation of the information relevant to the anomaly detection task. The resulting sequence of graphs are orders of magnitude smaller, and the relationship between node count and edge count stabilizes to a linear relationship. This suggests that as node count increases, the relative performance gains from applying this procedure increase rapidly. This increased performance does not come at any noticeable cost to the quality of our results: in fact, it appears to improve the quality, which makes sense given that the justification for the thresholding we are performing is closely tied to the particular kinds of events we are hoping to detect. 
+
+Additionally, significantly reducing the edge count gives us much more flexibility in our ability to experiment with modifications to the anomaly detection procedure, as running local scan statistics on higher order neighborhoods (or even just playing with the particular local scan statistic we are using) becomes significantly more tractable on conventional hardware. A more complex anomaly detection procedure doesn't necessarily ensure better results, but at least we now have the opportunity to experiment.
+
+
+
