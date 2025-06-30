@@ -1,3 +1,5 @@
+remote_theme: "mmistakes/minimal-mistakes@4.27.1"
+
 # Site wide configuration
 
 title:            Unsupervised Learning
@@ -15,6 +17,7 @@ sass:
   style: compressed
 plugins:
   - jekyll-sitemap
+  - jekyll-include-cache
 
 kramdown:
   auto_ids: true
