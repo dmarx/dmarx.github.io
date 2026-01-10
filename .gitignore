@@ -6,3 +6,13 @@ _site
 codekit-config.json
 node_modules
 _asset_bundler_cache
+
+
+public
+prof
+tsconfig.tsbuildinfo
+.obsidian
+.quartz-cache
+private/
+.replit
+replit.nix
