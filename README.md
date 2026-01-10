@@ -1,1 +1,1 @@
-Blog theme modified from **[Minimal Mistakes](http://mmistakes.github.io/minimal-mistakes)** by [Michael Rose](https://mademistakes.com/).
+Homepage/blog built with [Quartz](https://quartz.jzhao.xyz/)
