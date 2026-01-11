@@ -3,7 +3,7 @@ layout: post
 title: Installing scientific python libraries in windows
 excerpt: "Binaries for installing scientific python libraries"
 tags: [python, anaconda]
-modified:
+date: 2013-12-09
 comments: true
 ---
 

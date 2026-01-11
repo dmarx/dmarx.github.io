@@ -3,11 +3,12 @@ layout: post
 title: Getting Pandas
 excerpt: "A discussion of how I resolve some frustrations I'd previously encountered with python's pandas package"
 tags: [python, pandas, pylab, reddit]
-modified:
+date: 2012-10-20
+created: 2012-10-20
 comments: true
 ---
 
-![](/images/getting_pandas/batman_panda.jpg)
+![](./images/getting_pandas/batman_panda.jpg)
 
 No, I didn't go to the store and buy a panda. In fact, the national zoo here in DC lost a panda fairly recently :(
 
