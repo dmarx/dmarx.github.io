@@ -4,6 +4,7 @@ title: Getting Pandas
 excerpt: "A discussion of how I resolve some frustrations I'd previously encountered with python's pandas package"
 tags: [python, pandas, pylab, reddit]
 date: 2012-10-20
+created: 2012-10-20
 comments: true
 ---
 
