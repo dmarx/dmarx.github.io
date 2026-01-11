@@ -3,7 +3,7 @@ layout: post
 title: Topological Anomaly Detection (TAD)
 excerpt: 'Querying the "shape" of the data to perform unsupervised anomaly detection.'
 tags: [text processing, natural language processing, nlp, python]
-modified:
+date: 2014-08-04
 comments: true
 ---
 

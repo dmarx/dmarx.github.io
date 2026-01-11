@@ -3,7 +3,7 @@ layout: post
 title: Weekend Project - Word Ladder Solver
 excerpt: "Building a robust tool to efficiently play a simple word game"
 tags: [network graph, text processing, python, networkx]
-modified:
+date: 2012-11-28
 comments: true
 ---
 

@@ -3,7 +3,7 @@ layout: post
 title: Navigating the reddit graph
 excerpt: "Building a map of reddit"
 tags: [link analysis, networkx, gephi, python, network analysis]
-modified:
+date: 2016-01-02
 comments: true
 ---
 

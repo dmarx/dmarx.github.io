@@ -3,7 +3,7 @@ layout: post
 title: Idea - Graphing Wikipedia
 excerpt: "Project idea"
 tags: [idea, network graph, wikipedia]
-modified:
+date: 2012-12-05
 comments: true
 ---
 

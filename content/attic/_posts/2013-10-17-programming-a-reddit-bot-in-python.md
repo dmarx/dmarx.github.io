@@ -3,7 +3,7 @@ layout: post
 title: Programming A Simple Reddit Bot (in Python)
 excerpt: "A tutorial via walking through the design of a simple bot."
 tags: [python, praw, reddit]
-modified:
+date: 2013-10-17
 comments: true
 ---
 

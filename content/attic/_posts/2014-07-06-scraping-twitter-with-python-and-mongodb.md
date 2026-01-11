@@ -3,7 +3,7 @@ layout: post
 title: Scraping your twitter home timeline with python and mongodb
 excerpt: "Using the twitter API and NoSQL to construct a dataset of your friends tweets."
 tags: [text processing, natural language processing, nlp, python, mongo, mongodb, nosql, twython, twitter]
-modified:
+date: 2014-07-06
 comments: true
 ---
 

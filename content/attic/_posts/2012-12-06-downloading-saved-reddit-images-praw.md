@@ -3,7 +3,7 @@ layout: post
 title: Downloading images from saved reddit links
 excerpt: "A concise demonstration of the power of the python praw library"
 tags: [praw, python, reddit, webscraping]
-modified:
+date: 2012-12-06
 comments: true
 ---
 

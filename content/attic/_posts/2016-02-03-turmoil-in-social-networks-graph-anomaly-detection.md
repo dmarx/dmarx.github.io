@@ -3,7 +3,7 @@ layout: post
 title: Identifying Turmoil in Social Networks With Graph Anomaly Detection
 excerpt: "Using graph anomaly detection to identify unusual changes in the Reddit community structure that are characteristic of community turmoil"
 tags: [link analysis, igraph, R, network analysis, social network analysis, anomaly detection, reddit]
-modified:
+date: 2016-02-03
 comments: true
 ---
 

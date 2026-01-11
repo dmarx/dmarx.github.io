@@ -3,7 +3,7 @@ layout: post
 title: The Best of The Best on CrossValidated
 excerpt: 'Using the CrossValidated data explorer to find interesting users and posts.'
 tags: [crossvalidated, stackexchange, data explorer, sql, t-sql]
-modified:
+date: 2013-08-13
 comments: true
 ---
 

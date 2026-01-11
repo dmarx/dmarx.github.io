@@ -3,7 +3,7 @@ layout: post
 title: Winter Break Project - Building Minesweeper from Scratch
 excerpt: "A simple project based tour of language features"
 tags: [minesweeper, python, tkinter, tk]
-modified:
+date: 2013-01-05
 comments: true
 ---
 
