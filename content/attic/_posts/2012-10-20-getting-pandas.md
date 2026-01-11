@@ -6,9 +6,14 @@ tags: [python, pandas, pylab, reddit]
 date: 2012-10-20
 created: 2012-10-20
 comments: true
+permalink: "getting-pandas"
 ---
 
 ![](./images/getting_pandas/batman_panda.jpg)
+
+![](images/getting_pandas/batman_panda.jpg)
+
+![](/images/getting_pandas/batman_panda.jpg)
 
 No, I didn't go to the store and buy a panda. In fact, the national zoo here in DC lost a panda fairly recently :(
 
