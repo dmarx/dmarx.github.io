@@ -47,11 +47,11 @@ For our purposes, two words are similar if you can get from one word to another 
 
 The edit distance algorithm is a pretty neat little implementation of dynamic programming, but luckily I don't need to build it up from scratch: python's natural language toolkit has it built-in (be careful, it's case sensitive):
 
-{% highlight python %}
+```python
 from nltk import edit_distance
 edit_distance('WORD','BRIDGE')
 edit_distance('WORD','bridge')
-{% endhighlight %}
+```
 
 
 ### GRAPH TRAVERSAL
@@ -90,7 +90,7 @@ To find a path between two arbitrary words, we need a reasonably robust dictiona
 
 Obviously, implementing this in an array structure would be wildly inefficient. Such a matrix would need to be 83,667 x 83,667, or 7,000,166,889 cells, and presumably most of them will be 0's. If we allocate a byte to each cell in the array, this would take up 7 GB in memory. In actuality, elements of a list are allocated 4 bytes each with additional 36 bytes allocated for the list itself.
 
-{% highlight python %}
+```python
 >>>import sys
 >>>sys.getsizeof([])
 36
@@ -98,7 +98,7 @@ Obviously, implementing this in an array structure would be wildly inefficient. 
 40
 >>>sys.getsizeof([1,2])
 44
-{% endhighlight %}
+```
 
 Therefore, if our array is implemented as a list of lists (there are other options, such as a pandas dataframe or a numpy array, but this is the naive solution), the array would take up:
 
@@ -106,7 +106,7 @@ Therefore, if our array is implemented as a list of lists (there are other optio
 
 I certainly don't have 28 GB of RAM. We're going to need a "sparse" data structure instead, one where we get to keep the ones but can ignore the zeros. The simple solution here in python is a dictionary (which is basically just a [hash table](http://en.wikipedia.org/wiki/Hash_table)). For each word in our word list, find all similar words. In our python dictionary, the key is the searched word and the collection of matches will be our value (as a list, set, tuple...whatever).
 
-{% highlight python %}
+```python
 # The adjacency matrix for the graph above converted into a sparser
 # dictionary representation
 ## MATRIX FORM: 6 X 6 = 36 Elements
@@ -118,7 +118,7 @@ I certainly don't have 28 GB of RAM. We're going to need a "sparse" data structu
 ,'E':['A','B','F']
 ,'F':['C','D','E']
 }
-{% endhighlight %}
+```
 
 
 ### HEURISTICS
@@ -155,7 +155,7 @@ Binary search isn't really applicable to our problem, but we can still discount 
 
 We're going to handle this affix problem by grouping the words by prefix and suffix. In other words, we're going to build two search indexes: an index on prefix and an index on suffix. I did this using a dictionary where the affix is the key and the matching words are the values.
 
-{% highlight python %}
+```python
 def build_index(words, n_letters=2, left=True, verbose=True):
     n=n_letters
     res={}
@@ -206,7 +206,7 @@ def build_index(words, n_letters=2, left=True, verbose=True):
  'ZYZZYVAS']
 ,'ZZ':
 ['ZZZ']}
-{% endhighlight %}
+```
 
 This significantly speeds up our code, but if you watch the code run, it seems to speed up and slow down in bursts. This isn't because your RAM is wonky. This is because the elements in our indexes aren't evenly distributed. Specifically, two-letter prefixes are pretty evenly distributed, but two letter-suffixes are not.
 
@@ -251,7 +251,7 @@ If you look at the X axis of the histograms below for the three letter indices y
 
 With our indexes in place, we can now generate our similarity network in a reasonable amount of time: about 90 minutes on my computer.
 
-{% highlight python %}
+```python
 def build_wordnet(wordlist, max_dist=1, index_size=None):
     """
     Returns a word similarity network (as a dict) where similarity is
@@ -285,11 +285,11 @@ def build_wordnet(wordlist, max_dist=1, index_size=None):
                 print n, int(time.time() - start)/60
             last = now
     return similarity_network
-{% endhighlight %}
+```
 
 At this point you should really think about saving your result so you don't have to wait 90 minutes every time you want to play with this tool we're building (i.e. we should only ever have to run these calculations once). I recommend pickling the dictionary to a file.
 
-{% highlight python %}
+```python
 import cPickle
 
 datafile = 'similarity_matrix.dat'
@@ -299,7 +299,7 @@ p = cPickle.Pickler(f)
 g = build_wordnet(words)
 p.dump(g)
 f.close()
-{% endhighlight %}
+```
 
 ### NETWORKS
 
@@ -307,7 +307,7 @@ Now that we've got the structure in place, we're ready to find some word bridges
 
 All we have left to do is convert our graph into a networkx.Graph object, and call the networkx path search algorithm.
 
-{% highlight python %}
+```python
 import networkx as nx
 net = nx.Graph()
 net.add_nodes_from(words)
@@ -318,7 +318,7 @@ for k,v in g.iteritems():
 w1 = raw_input("Start Word: ")
 w2 = raw_input("End Word:   ")
 nx.shortest_path(g, w1, w2)   # BAM! Don't need to reinvent the motherfucking wheel.
-{% endhighlight %}
+```
 
 Really, we could have just used this data structure from the start when we were building the network up, but the dictionary worked just fine, the conversion step is still fast, I strongly suspect the native dict pickles to a smaller file than an nx.Graph would (feel free to prove it to yourself), and it was also a better pedagogical tool. Moreover, networkx graphs are dictionary-like, so the idea is still the same.
 
@@ -326,7 +326,7 @@ Really, we could have just used this data structure from the start when we were 
 
 A feature we're lacking here is the ability to add missing words. After playing with this a little I've found that the word list I started with is short a few words, and doesn't contain any proper nouns (preventing me from using my own name in word bridges, for example). In the current implementation, to add a single word I would need to rebuild the whole network. I could build in a new function that adds a word to the graph, but I'd want to add this word into indexes too. This is getting complicated. But if I rebuild my tools using OOP principles, this feature will be pretty simple to add and I can reuse most of my existing code (by wrapping several things that currently appear in loops as methods). There are two kinds of entities we're going to want to represent: indexes, and word networks.
 
-{% highlight python %}
+```python
 
 class Index(object):
     '''
@@ -451,4 +451,4 @@ class Wordbridge(object):
             return nx.shortest_path(self.g, w1.upper(), w2.upper())
         except: # NetworkXNoPath error
             return "No path between %s and %s" % (w1, w2)
-{% endhighlight %}
+```

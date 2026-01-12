@@ -90,7 +90,7 @@ So we're all set up with twython and mongo: time to start talking to twitter.
 
 We start by calling in the relevant configuration values and spinning up a Twython instance:
 
-{% highlight python %}
+```python
 import ConfigParser
 from twython import Twython
 
@@ -105,14 +105,14 @@ OAUTH_TOKEN_SECRET = config.get('credentials','oath_token_secret')
 
 twitter = Twython(APP_KEY, APP_SECRET, OAUTH_TOKEN, OAUTH_TOKEN_SECRET)
 twitter.verify_credentials()
-{% endhighlight %}
+```
 
 To get the most recent tweets from our timeline, we hit the "/statuses/home_timeline" API endpoint. We can get a maximum of 200 tweets per call to the endpoint, so let's do that. Also, I'm a little data greedy, so I'm also going to ask for "contributor details:"
 
-{% highlight python %}
+```python
 params = {'count':200, 'contributor_details':True}
 home = twitter.get_home_timeline(**params)
-{% endhighlight %}
+```
 
 Now, if we want to do persistent scraping of our home feed, obviously we can't just wrap this call in a while loop: we need to make sure twitter knows what we've already seen so we only get the newest tweets. To do this, we will use the "since_id" parameter to set a limit on how far back in the timeline the tweets in our response will go.
 
@@ -124,7 +124,7 @@ Consider a situation in which, since the last call to the timeline, so many new 
 
 Putting this all together, here's what our persistent scraper looks like so far:
 
-{% highlight python %}
+```python
 latest = None   # most recent id we've seen
 while True:
     try:
@@ -142,7 +142,7 @@ while True:
                     
                 params['max_id'] = home[-1]['id'] - 1
                 home = twitter.get_home_timeline(**params)
-{% endhighlight %}
+```
 
 ### Rate limiting
 
@@ -156,20 +156,20 @@ As with pretty much any web API, twitter doesn't take too kindly to people slamm
 
 If we don't pass in any parameters, the `application/rate_limit_status` endpoint will return the rate limit statuses for every single API endpoint which is much more data than we need, so we'll limit the data we get back by constraining the response to "statuses" endpoints:
 
-{% highlight python %}
+```python
 status = twitter.get_application_rate_limit_status(resources = ['statuses'])
-{% endhighlight %}
+```
 
 This returns a JSON response wihch we only want a particular set of values from, so let's select that bit out:
 
-{% highlight python %}
+```python
 status = twitter.get_application_rate_limit_status(resources = ['statuses'])
 home_status = status['resources']['statuses']['/statuses/home_timeline']        
-{% endhighlight %}
+```
 
 Finally, we'll test how many API calls are remaining in the current window, and if we've run out set the application to sleep until the window resets, double check that we're ok, and then resume scraping. I've wrapped this procedure in a function to make it simple to perform this test:
 
-{% highlight python %}
+```python
 def handle_rate_limiting():
     while True:
         status = twitter.get_application_rate_limit_status(resources = ['statuses'])
@@ -179,11 +179,11 @@ def handle_rate_limiting():
             time.sleep(wait)
         else:
             return
-{% endhighlight %}
+```
 
 We're only testing one of the API endpoints we're hitting though: we're hitting the application/rate_limit_status endpoint as well, so we should include that in our test just to be safe although realistically, there's no reason to believe we'll ever hit the limitation for that endpoint.
 
-{% highlight python %}
+```python
 def handle_rate_limiting():
     app_status = {'remaining':1} # prepopulating this to make the first 'if' check fail
     while True:
@@ -199,11 +199,11 @@ def handle_rate_limiting():
         else :
             wait = max(app_status['reset'] - time.time(), 0) + 10
             time.sleep(wait)
-{% endhighlight %}
+```
 
 Now that we have this, we can insert it into the while loop that performs the home timeline scraping function. While we're at it, we'll throw in some exception handling just in case this rate limiting function doesn't work the way it's supposed to.
 
-{% highlight python %}
+```python
 while True:
     try:
         newest = None
@@ -233,13 +233,13 @@ while True:
         print e
         print "Non rate-limit exception encountered. Sleeping for 15 min before retrying"
         time.sleep(60*15)
-{% endhighlight %}
+```
 
 ### Storing Tweets in Mongo
 
 First, we need to spin up the database/collection we defined in the config file.
 
-{% highlight python %}
+```python
 from pymongo import Connection
 
 DBNAME = config.get('database', 'name')
@@ -247,33 +247,33 @@ COLLECTION = config.get('database', 'collection')
 conn = Connection()
 db = conn[DBNAME]
 tweets = db[COLLECTION]
-{% endhighlight %}
+```
 
 I've been calling a placeholder function `store_tweets()` above, let's actually define it:
 
-{% highlight python %}
+```python
 def store_tweets(tweets_to_save, collection=tweets):
     collection.insert(tweets_to_save)
-{% endhighlight %}
+```
 
 Told you using mongo was easy! In fact, we could actually just replace every single call to `store_tweets(home)` with `tweets.insert(home)`. It's really that simple to use mongo.
 
 The reason I wrapped this in a separate function is because I actually want to process the tweets I'm downloading a little bit for my own purposes. A component of my project is going to involve calculating some simple statistics on tweets based on when they were authored, so before storing them I'm going to convert the time stamp on each tweet to a python datetime object. Mongo plays miraculously well with python, so we can actually store that datetime object without serializing it.
 
-{% highlight python %}
+```python
 import datetime
 
 def store_tweets(tweets_to_save, collection=tweets):
     for tw in tweets_to_save:
         tw['created_at'] = datetime.datetime.strptime(tw['created_at'], '%a %b %d %H:%M:%S +0000 %Y')
     collection.insert(tweets_to_save)
-{% endhighlight %}
+```
 
 ### Picking up where we left off
 
 The first time we run this script, it will scrape from the newest tweet back as far in our timeline as it can (approximately 800 tweets back). Then it will monitor new tweets and drop them in the database. But this behavior is completely contingent on the persistence of the "latest" variable. If the script dies for any reason, we're in trouble: restarting the script will do a complete scrape on our timeline from scratch, going back as far as it can through historical tweets again. To manage this, we can query the "latest" variable from the database instead of just blindly setting it to "None" when we call the script:
 
-{% highlight python %}
+```python
 latest = None   # most recent id scraped
 try:
     last_tweet = tweets.find(limit=1, sort=[('id',-1)])[0] # sort: 1 = ascending, -1 = descending
@@ -281,11 +281,11 @@ try:
         latest = last_tweet['id']
 except:
     print "Error retrieving tweets. Database probably needs to be populated before it can be queried."
-{% endhighlight %}
+```
 
 And we're done! The finished script looks like this:
 
-{% highlight python %}
+```python
 import ConfigParser
 import datetime
 from pymongo import Connection
@@ -375,4 +375,4 @@ while True:
         print e
         print "Non rate-limit exception encountered. Sleeping for 15 min before retrying"
         time.sleep(60*15)
-{% endhighlight %}
+```
