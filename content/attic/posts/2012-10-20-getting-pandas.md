@@ -9,7 +9,7 @@ comments: true
 permalink: "getting-pandas"
 ---
 
-![](attic/images/getting_pandas/batman_panda.jpg)
+![](images/getting_pandas/batman_panda.jpg)
 
 No, I didn't go to the store and buy a panda. In fact, the national zoo here in DC lost a panda fairly recently :(
 
