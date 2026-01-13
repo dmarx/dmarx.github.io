@@ -5,6 +5,7 @@ excerpt: "Project idea"
 tags: [idea, network graph, wikipedia]
 date: 2012-12-05
 comments: true
+permalink: idea-graphing-wikipedia
 ---
 
 I'm almost certain something like this has been done before. Anyway, here's the idea:

@@ -5,6 +5,7 @@ excerpt: "Building a robust tool to efficiently play a simple word game"
 tags: [network graph, text processing, python, networkx]
 date: 2012-11-28
 comments: true
+permalink: word-ladder-solver
 ---
 
 << I plan to add a few graphics, code snippets, and trim the code posted at the bottom, but I just haven't gotten around to it. I wrote the bulk of this about two weeks ago now and just haven't gotten around to finishing it. I'll update this post when I can, but for now, I'm just going to publish since I have no time to clean it up. I'll remove this message when I've made the post all nice and pretty (probably never).>>

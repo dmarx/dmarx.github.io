@@ -5,6 +5,7 @@ excerpt: "Building a map of reddit"
 tags: [link analysis, networkx, gephi, python, network analysis]
 date: 2016-01-02
 comments: true
+permalink: Map-of-Reddit
 ---
 
 *(This is a project I've been sitting on for a while and have just never gotten around to writing a post on. I hope to fill this in with more details in the future, but for now I just want to get it on the blog)*

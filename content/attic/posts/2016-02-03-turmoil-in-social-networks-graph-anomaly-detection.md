@@ -5,6 +5,7 @@ excerpt: "Using graph anomaly detection to identify unusual changes in the Reddi
 tags: [link analysis, igraph, R, network analysis, social network analysis, anomaly detection, reddit]
 date: 2016-02-03
 comments: true
+permalink: turmoil-in-social-networks-graph-anomaly-detection
 ---
 
 <figure>

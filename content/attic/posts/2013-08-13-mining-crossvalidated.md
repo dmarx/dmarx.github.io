@@ -5,6 +5,7 @@ excerpt: 'Using the CrossValidated data explorer to find interesting users and p
 tags: [crossvalidated, stackexchange, data explorer, sql, t-sql]
 date: 2013-08-13
 comments: true
+permalink: mining-crossvalidated
 ---
 
 [CrossValidated](http://stats.stackexchange.com/) is the StackExchange Q&A site focused on statistics. I mainly participate on CV answering questions ([http://stats.stackexchange.com/users/8451/david-marx](http://stats.stackexchange.com/users/8451/david-marx)). One somewhat alternative use of SE sites that I like is to "stalk" interesting users. I started this practice on [StackOverflow](http://stackoverflow.com/) (the very popular programming QA site), where I'd occasionally stumble across very high reputation users answering topics with tags I was interested in, so I'd check their answer history to see what other interesting things they'd posted. This was interesting, but because users on SO have such varied skills, you never know what you're going to get: maybe I visited a users page because they were answering a Python question, but it turns out most of their activity is talking about some other technology I'm not interested in.
