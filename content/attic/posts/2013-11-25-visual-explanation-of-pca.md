@@ -5,6 +5,7 @@ excerpt: "Visual explanation of PCA"
 tags: [principal component analysis, pca, dimensionality reduction, linear algebra, r language]
 date: 2013-11-25
 comments: true
+permalink: visual-explanation-of-pca
 ---
 
 PCA seems to have gained sufficient popularity that many "I know just enough statistics to be really dangerous" types are using it. I have no real problem with this: it's a great technique that has a lot of applications, but on a fairly regular basis I stumble across questions about PCA on CrossValidated that would only be asked by someone who really doesn't understand at a fundamental level what PCA is doing. Often the situation is appropriate for PCA to be applied (usually dimensionality reduction), but questions are asked about how to use or interpret the output the indicate the person really doesn't know what's going on.

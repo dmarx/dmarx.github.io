@@ -5,6 +5,7 @@ excerpt: "Binaries for installing scientific python libraries"
 tags: [python, anaconda]
 date: 2013-12-09
 comments: true
+permalink: installing-scientific-python-libraries-windows
 ---
 
 I often have issues installing certain python libraries (such as scipy or opencv) in windows. One solution to this problem is to do it the hard ware and just work your way through the errors as they come, winding your way through a maze of StackOverflow posts and mucking around in the registry. An alternative is to install a scientific python distribution like the [Enthought](https://www.enthought.com/products/epd/) Python Distribution, Continuum Analytics' [Anaconda](https://store.continuum.io/cshop/anaconda/), or [Python(x,y)](http://code.google.com/p/pythonxy/). I've played around with Anaconda and Python(x,y) and they're ok. Anaconda at least is supposed to be a little bit faster than the vanilla python installation, but I haven't done any speed tests or anything.

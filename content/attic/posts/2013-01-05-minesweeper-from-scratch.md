@@ -5,6 +5,7 @@ excerpt: "A simple project based tour of language features"
 tags: [minesweeper, python, tkinter, tk]
 date: 2013-01-05
 comments: true
+permalink: minesweeper-from-scratch
 ---
 
 Code: [https://github.com/dmarx/mines](https://github.com/dmarx/mines)

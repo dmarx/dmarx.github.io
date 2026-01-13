@@ -5,6 +5,7 @@ excerpt: "An improved bipartite projection for social network modeling"
 tags: [link analysis, networkx, gephi, python, network analysis, reddit]
 date: 2017-01-01
 comments: true
+permalink: map-of-reddit-by-active-users
 ---
 
 <figure>

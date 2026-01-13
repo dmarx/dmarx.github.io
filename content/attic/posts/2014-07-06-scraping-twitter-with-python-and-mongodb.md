@@ -5,6 +5,7 @@ excerpt: "Using the twitter API and NoSQL to construct a dataset of your friends
 tags: [text processing, natural language processing, nlp, python, mongo, mongodb, nosql, twython, twitter]
 date: 2014-07-06
 comments: true
+permalink: scraping-twitter-with-python-and-mongodb
 ---
 
 ### Background

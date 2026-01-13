@@ -5,6 +5,7 @@ excerpt: "A tutorial via walking through the design of a simple bot."
 tags: [python, praw, reddit]
 date: 2013-10-17
 comments: true
+permalink: programming-a-reddit-bot-in-python
 ---
 
 Almost a year ago I built a built a reddit bot called [VideoLinkBot](http://www.reddit.com/user/videolinkbot) that has been running on an old half-broken laptop in my room ever since. VLB was a great exercise in agile development that I started to write a post about awhile ago but abandoned. The gist of it is that the bot only satisfied a small portion of my vision when it first went live, but I didn't want to delay "bringing my product to market." This was a good decision because due mainly to time constraints, it took quite some time for me to incorporate most of the features I originally planned for the bot, many of which were deprioritized in my development path in favor of things my "end users" (redditors) specifically requested.

@@ -5,6 +5,7 @@ excerpt: "Identifying edges significant to graph anomaly calculations by buildin
 tags: [link analysis, igraph, R, network analysis, social network analysis, anomaly detection, reddit]
 date: 2017-01-09
 comments: true
+permalink: binomial-edge-significance-binomial-graph-anomaly-detection
 ---
 
 ## Background

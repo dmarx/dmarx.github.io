@@ -5,6 +5,7 @@ excerpt: 'Querying the "shape" of the data to perform unsupervised anomaly detec
 tags: [text processing, natural language processing, nlp, python]
 date: 2014-08-04
 comments: true
+permalink: Topological-Anomaly-Detection
 ---
 
 <figure>
