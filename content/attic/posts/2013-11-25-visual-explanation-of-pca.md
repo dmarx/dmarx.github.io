@@ -106,6 +106,6 @@ for(i in 1:n){
   lines(rbind(recovered[i,], mydata[i,]), col='blue')
 }
 points(recovered, col='blue', pch=20)
-{% endhighlight %}
+```
 
 The bulk of this post was scavenged from a [response I provided on CrossValidated](http://stats.stackexchange.com/a/76911/8451).

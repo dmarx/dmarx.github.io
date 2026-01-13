@@ -45,4 +45,4 @@ WHERE  u.id = p.owneruserid
 GROUP BY reputation, u.displayname, u.age, u.location, u.websiteurl, 
        u.lastaccessdate, u.id
 ORDER BY max(score) * count(p.id) desc
-{% endhighlight %}      
+```      
